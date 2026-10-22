@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+/* Fallback local / CDN direto para SF Pro Display da Apple */
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('SF Pro Display'), local('SF Pro Text'), local('-apple-system'), local('BlinkMacSystemFont'), url('https://fonts.cdnfonts.com/s/59278/SFPRODISPLAYREGULAR.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: local('SF Pro Display Medium'), local('SF Pro Text Medium'), url('https://fonts.cdnfonts.com/s/59278/SFPRODISPLAYMEDIUM.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('SF Pro Display Semibold'), local('SF Pro Text Semibold'), url('https://fonts.cdnfonts.com/s/59278/SFPRODISPLAYBOLD.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('SF Pro Display Bold'), local('SF Pro Text Bold'), url('https://fonts.cdnfonts.com/s/59278/SFPRODISPLAYBOLD.woff') format('woff');
+}
+
+@theme {
+  --color-bg-base: #0e0d0b;
+  --color-surface-1: #181612;
+  --color-surface-2: #221f19;
+  --color-surface-3: #2a261f;
+  --color-border-subtle: #2e2a22;
+  --color-border-gold: rgba(201, 162, 74, 0.35);
+
+  --color-gold: #c9a24a;
+  --color-gold-hover: #e0be6a;
+  --color-gold-muted: rgba(201, 162, 74, 0.15);
+
+  --color-wood: #8a5a36;
+  --color-wood-dark: #5c381e;
+
+  --color-text-main: #f3eee4;
+  --color-text-muted: #a39c8e;
+  --color-text-dim: #706a5f;
+
+  --color-success: #4caf7a;
+  --color-warning: #e0a23a;
+  --color-destructive: #d9534f;
+
+  --font-heading: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+:root {
+  --background: #0e0d0b;
+  --foreground: #f3eee4;
+  --primary: #c9a24a;
+  --primary-foreground: #0e0d0b;
+  --card: #181612;
+  --card-foreground: #f3eee4;
+  --popover: #181612;
+  --popover-foreground: #f3eee4;
+  --secondary: #221f19;
+  --secondary-foreground: #f3eee4;
+  --muted: #221f19;
+  --muted-foreground: #a39c8e;
+  --accent: #8a5a36;
+  --accent-foreground: #f3eee4;
+  --destructive: #d9534f;
+  --destructive-foreground: #f3eee4;
+  --border: #2e2a22;
+  --input: #2e2a22;
+  --ring: #c9a24a;
+  --radius: 0.875rem;
+
+  --font-apple: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: #0e0d0b;
+  color: #f3eee4;
+  font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  letter-spacing: -0.02em;
+}
+
+p, span, div, a, button, input, select, textarea, label {
+  font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Touch targets acessíveis e sem rolagem horizontal */
+button, a, input, select, textarea {
+  min-height: 44px;
+}
+
+/* Scrollbar estilizada sutil dourada/madeira */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0e0d0b;
+}
+::-webkit-scrollbar-thumb {
+  background: #2e2a22;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c9a24a;
+}
+
+/* ==========================================================================
+   ANIMAÇÕES E BRILHOS METÁLICOS OTIMIZADOS (AGENDAMENTO & ELEMENTOS GRÁFICOS)
+   Aceleração via GPU (transform: translate3d, opacity) para máxima fluidez a 60/120fps
+   ========================================================================== */
+
+@keyframes metallic-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+@keyframes metallic-border-pulse {
+  0%, 100% {
+    border-color: rgba(201, 162, 74, 0.35);
+    box-shadow: 0 0 0 0 rgba(201, 162, 74, 0);
+  }
+  50% {
+    border-color: rgba(240, 208, 128, 0.75);
+    box-shadow: 0 0 14px rgba(201, 162, 74, 0.25);
+  }
+}
+
+@keyframes metallic-glow-active {
+  0%, 100% {
+    box-shadow: 0 4px 20px -2px rgba(201, 162, 74, 0.3), inset 0 1px 1px 0 rgba(255, 235, 170, 0.4);
+  }
+  50% {
+    box-shadow: 0 6px 26px 0 rgba(201, 162, 74, 0.45), inset 0 1px 2px 0 rgba(255, 245, 200, 0.6);
+  }
+}
+
+@keyframes metallic-float-micro {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Shimmer de reflexo metálico fluido */
+.metallic-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.metallic-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 240, 180, 0.12) 30%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 240, 180, 0.12) 70%,
+    transparent 100%
+  );
+  transform: translateX(-150%) skewX(-20deg);
+  animation: metallic-sweep 6s infinite ease-in-out;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* Botão Metálico Dourado Premium */
+.metallic-gold-btn {
+  background: linear-gradient(135deg, #dfbd68 0%, #c9a24a 45%, #b28b34 100%);
+  color: #0e0d0b;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(201, 162, 74, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.45);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+.metallic-gold-btn:hover {
+  background: linear-gradient(135deg, #eed07f 0%, #d8b257 45%, #c2993d 100%);
+  box-shadow: 0 6px 22px rgba(201, 162, 74, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.metallic-gold-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.metallic-gold-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 100%
+  );
+  transform: translateX(-150%) skewX(-25deg);
+  animation: metallic-sweep 4.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+/* Badge Metálica */
+.metallic-badge {
+  background: linear-gradient(135deg, #eed07f 0%, #c9a24a 100%);
+  color: #0e0d0b;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(201, 162, 74, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.02em;
+}
+
+/* Moldura de Ícone Metálica */
+.metallic-icon-frame {
+  background: radial-gradient(circle at 35% 30%, #2f2a20 0%, #1e1b15 100%);
+  border: 1px solid rgba(201, 162, 74, 0.35);
+  box-shadow: inset 0 1px 1px rgba(255, 240, 180, 0.15), 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s ease;
+}
+
+.metallic-icon-frame-active {
+  background: linear-gradient(135deg, #e4c471 0%, #c9a24a 100%);
+  color: #0e0d0b;
+  border-color: #eed07f;
+  box-shadow: 0 4px 14px rgba(201, 162, 74, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  animation: metallic-float-micro 3s ease-in-out infinite;
+}
+
+/* Card Selecionado com Borda e Brilho Metálico */
+.metallic-card-selected {
+  border-color: #c9a24a !important;
+  background: linear-gradient(180deg, rgba(34, 31, 25, 0.95) 0%, rgba(24, 22, 18, 0.95) 100%) !important;
+  box-shadow: 0 4px 18px -2px rgba(201, 162, 74, 0.3), inset 0 1px 0 rgba(255, 235, 170, 0.35) !important;
+  animation: metallic-border-pulse 4s infinite ease-in-out;
+}
+
+/* Card de Combo Especial com Brilho Distinto */
+.metallic-combo-card {
+  background: linear-gradient(165deg, rgba(38, 33, 24, 0.85) 0%, rgba(24, 22, 18, 0.9) 100%);
+  border: 1px solid rgba(201, 162, 74, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 235, 170, 0.2);
+}
