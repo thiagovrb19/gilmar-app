@@ -10,7 +10,7 @@ import { loginAdmin } from "@/actions/auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("gilmar@gseletrica.com");
+  const [email, setEmail] = useState("gilmar");
   const [senha, setSenha] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,14 +50,14 @@ export default function AdminLoginPage() {
         <div className="bg-surface-1 border border-border-subtle rounded-2xl p-6 shadow-2xl space-y-4">
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs text-text-muted block mb-1">E-mail do Administrador:</label>
+              <label className="text-xs text-text-muted block mb-1">Login do Administrador:</label>
               <div className="relative">
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="gilmar@gseletrica.com"
+                  placeholder="gilmar ou gilmar@gseletrica.com"
                   className="w-full bg-surface-2 border border-border-subtle rounded-xl pl-10 pr-3.5 py-3 text-sm text-text-main placeholder:text-text-muted/60 focus:outline-none focus:border-gold"
                 />
                 <Mail className="w-4 h-4 text-text-muted absolute left-3.5 top-3.5" />

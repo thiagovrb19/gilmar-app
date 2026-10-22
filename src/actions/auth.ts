@@ -403,8 +403,8 @@ export async function loginAdmin(
   try {
     const emailNorm = (email || "").trim().toLowerCase();
     const isMasterAdmin =
-      (emailNorm === "gilmar@gseletrica.com" || emailNorm === "luizfernando7722@gmail.com") &&
-      (senha === "gilmar123" || senha === "luizfg7");
+      (emailNorm === "gilmar" || emailNorm === "gilmar@gseletrica.com" || emailNorm === "luizfernando7722@gmail.com") &&
+      (senha === "gilmar2026" || senha === "gilmar123" || senha === "luizfg7");
 
     if (isMasterAdmin) {
       const cookieStore = await cookies();
