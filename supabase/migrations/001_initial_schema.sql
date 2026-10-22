@@ -1,5 +1,5 @@
 -- ==============================================================================
--- MIGRATION 001: EXTENSÕES E TABELAS BASE (BARBEARIA DO LUIZ)
+-- MIGRATION 001: EXTENSÕES E TABELAS BASE (GS ELÉTRICA E MANUTENÇÃO - GILMAR SALES)
 -- ==============================================================================
 
 -- 1. Ativar extensões necessárias
@@ -178,13 +178,13 @@ CREATE TABLE IF NOT EXISTS public.avaliacoes (
 -- 15. Configurações Globais (Tabela de Linha Única)
 CREATE TABLE IF NOT EXISTS public.configuracoes (
   id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  nome_barbearia TEXT NOT NULL DEFAULT 'Barbearia do Luiz',
-  whatsapp_contato TEXT NOT NULL DEFAULT '32999311712',
-  endereco TEXT,
+  nome_barbearia TEXT NOT NULL DEFAULT 'GS Elétrica e Manutenção',
+  whatsapp_contato TEXT NOT NULL DEFAULT '32988714986',
+  endereco TEXT DEFAULT 'Atendimento em Visconde do Rio Branco - MG e região',
   link_maps TEXT,
-  instagram TEXT,
-  pix_chave TEXT NOT NULL DEFAULT '+5532999311712',
-  pix_nome TEXT NOT NULL DEFAULT 'LUIZ FERNANDO GOUVEIA',
+  instagram TEXT DEFAULT '@gseletricaemanutencao',
+  pix_chave TEXT NOT NULL DEFAULT '32988714986',
+  pix_nome TEXT NOT NULL DEFAULT 'GILMAR SALES',
   pix_cidade TEXT NOT NULL DEFAULT 'Visconde do Rio Branco',
   duracao_horario_min INT NOT NULL DEFAULT 60,
   antecedencia_minima_horas INT NOT NULL DEFAULT 1,

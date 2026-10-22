@@ -1,5 +1,5 @@
 -- ==============================================================================
--- MIGRATION 002: VIEWS E FUNÇÕES RPC SEGURAS (BARBEARIA DO LUIZ)
+-- MIGRATION 002: VIEWS E FUNÇÕES RPC SEGURAS (GS ELÉTRICA E MANUTENÇÃO - GILMAR SALES)
 -- ==============================================================================
 
 -- 1. View Estatísticas dos Clientes (para o painel de clientes, ranking e sumidos)
@@ -101,7 +101,7 @@ BEGIN
     -- 1. Ignorar se o slot já passou ou está dentro da antecedência mínima
     IF v_slot_inicio >= (v_agora + (v_antecedencia_horas || ' hours')::INTERVAL) THEN
 
-      -- 2. Verificar se colide com algum bloqueio do Luiz
+      -- 2. Verificar se colide com algum bloqueio do Gilmar
       IF NOT EXISTS (
         SELECT 1 FROM public.bloqueios b
         WHERE tstzrange(b.inicio, b.fim) && tstzrange(v_slot_inicio, v_slot_fim)

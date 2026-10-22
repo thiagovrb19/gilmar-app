@@ -1,6 +1,6 @@
 -- ==============================================================================
--- CORREÇÃO DEFINITIVA: FUSO HORÁRIO DE CLIENTES FIXOS & RECARGA DE SCHEMA
--- Barbearia do Luiz (Executar no SQL Editor do Supabase)
+-- CORREÇÃO DEFINITIVA: FUSO HORÁRIO DE CLIENTES & RECARGA DE SCHEMA
+-- GS Elétrica e Manutenção - Gilmar Sales (Executar no SQL Editor do Supabase)
 -- ==============================================================================
 
 -- 1. Atualizar a RPC horarios_disponiveis com o fuso horário correto de Brasília (America/Sao_Paulo)
@@ -143,18 +143,28 @@ GRANT EXECUTE ON FUNCTION public.horarios_disponiveis(DATE) TO anon, authenticat
 GRANT ALL ON TABLE public.servicos TO postgres, anon, authenticated, service_role;
 GRANT ALL ON TABLE public.combo_itens TO postgres, anon, authenticated, service_role;
 
--- 4. Garantir que os serviços padrão existem no banco (sem sobrescrever nenhuma alteração já feita pelo Luiz)
+-- 4. Garantir que os serviços padrão existem no banco (sem sobrescrever nenhuma alteração já feita)
 INSERT INTO public.servicos (id, nome, descricao, preco, duracao_min, icone, tipo, ativo, ordem)
 VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'Corte (máquina e tesoura)', 'Corte moderno ou clássico com acabamento perfeito', 25.00, 60, 'corte', 'avulso', true, 1),
-  ('c0000000-0000-0000-0000-000000000002', 'Barba', 'Desenho e alinhamento com toalha quente e navalha', 20.00, 60, 'barba', 'avulso', true, 2),
-  ('c0000000-0000-0000-0000-000000000003', 'Pezinho', 'Acabamento do corte nas laterais e nuca', 10.00, 60, 'pezinho', 'avulso', true, 3),
-  ('c0000000-0000-0000-0000-000000000004', 'Sobrancelha', 'Limpeza e alinhamento com pinça/navalha', 5.00, 60, 'sobrancelha', 'avulso', true, 4),
-  ('c0000000-0000-0000-0000-000000000005', 'Cavanhaque', 'Alinhamento e contorno preciso do cavanhaque', 5.00, 60, 'cavanhaque', 'avulso', true, 5),
-  ('c0000000-0000-0000-0000-000000000006', 'Pigmentação', 'Pigmentação para disfarçar falhas e realçar o corte', 15.00, 60, 'pigmentacao', 'avulso', true, 6),
-  ('c0000000-0000-0000-0000-000000000007', 'Combo: Cabelo + Barba', 'Corte completo e barba alinhada com toalha quente (Economize R$ 5,00)', 40.00, 60, 'combo', 'combo', true, 7),
-  ('c0000000-0000-0000-0000-000000000008', 'Cabelo, Sobrancelha e Cavanhaque', 'Visual alinhado completo (Economize R$ 5,00)', 30.00, 60, 'combo', 'combo', true, 8)
-ON CONFLICT (id) DO NOTHING;
+  ('c0000000-0000-0000-0000-000000000001', 'Troca de lâmpadas e luminárias', 'Troca de lâmpadas, luminárias simples e spots.', 50.00, 45, 'lampada', 'avulso', true, 1),
+  ('c0000000-0000-0000-0000-000000000002', 'Troca de chuveiro', 'Desinstalação do chuveiro antigo e instalação do novo.', 120.00, 60, 'chuveiro', 'avulso', true, 2),
+  ('c0000000-0000-0000-0000-000000000003', 'Troca de tomadas e interruptores', 'Troca de tomadas ou interruptores simples.', 40.00, 30, 'tomada', 'avulso', true, 3),
+  ('c0000000-0000-0000-0000-000000000004', 'Troca de disjuntor', 'Substituição de disjuntor no quadro de distribuição.', 60.00, 45, 'quadro', 'avulso', true, 4),
+  ('c0000000-0000-0000-0000-000000000005', 'Instalação de tomadas e interruptores', 'Instalação de novos pontos de tomadas ou interruptores.', 90.00, 60, 'tomada', 'avulso', true, 5),
+  ('c0000000-0000-0000-0000-000000000006', 'Instalação de ventiladores e luminárias', 'Instalação completa de ventiladores ou luminárias.', 120.00, 90, 'lampada', 'avulso', true, 6),
+  ('c0000000-0000-0000-0000-000000000007', 'Ligação de padrão (monofásico)', 'Instalação do padrão de entrada monofásico.', 450.00, 180, 'padrao', 'avulso', true, 7),
+  ('c0000000-0000-0000-0000-000000000008', 'Ligação de padrão (trifásico)', 'Instalação do padrão de entrada trifásico.', 750.00, 240, 'padrao', 'avulso', true, 8),
+  ('c0000000-0000-0000-0000-000000000009', 'Montagem de quadro de distribuição', 'Montagem completa de quadro de distribuição.', 600.00, 180, 'quadro', 'avulso', true, 9),
+  ('c0000000-0000-0000-0000-000000000010', 'Manutenção elétrica industrial', 'Manutenção preventiva e corretiva em máquinas e painéis industriais (R$ 60,00/h).', 60.00, 60, 'industrial', 'avulso', true, 10),
+  ('c0000000-0000-0000-0000-000000000011', 'Instalação de motores elétricos', 'Instalação e ligação de motores monofásicos ou trifásicos.', 250.00, 120, 'industrial', 'avulso', true, 11),
+  ('c0000000-0000-0000-0000-000000000012', 'Instalação de inversores de frequência', 'Instalação e parametrização básica de inversores de frequência.', 400.00, 120, 'industrial', 'avulso', true, 12)
+ON CONFLICT (id) DO UPDATE SET
+  nome = EXCLUDED.nome,
+  descricao = EXCLUDED.descricao,
+  preco = EXCLUDED.preco,
+  tipo = EXCLUDED.tipo,
+  ordem = EXCLUDED.ordem,
+  icone = EXCLUDED.icone;
 
 -- 5. Notificar o PostgREST para recarregar o cache do schema imediatamente
 NOTIFY pgrst, 'reload schema';

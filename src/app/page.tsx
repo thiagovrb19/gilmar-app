@@ -43,11 +43,11 @@ export default async function HomePage() {
 
           {/* Logo Oficial Enviada pelo Cliente (gs-logo) */}
           <div className="relative shrink-0 w-full md:w-80 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 bg-gradient-to-br from-[#0c121d] via-[#06090f] to-[#121b2b] p-5 shadow-2xl flex flex-col items-center justify-center text-center group">
-            <div className="relative w-36 h-36 rounded-2xl overflow-hidden border-2 border-[#ffe066]/60 shadow-[0_0_25px_rgba(0,132,255,0.4)] mb-3 bg-surface-2 p-1 transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_22px_rgba(0,132,255,0.4)] mb-3 bg-[#0c121d] p-1.5 transition-transform duration-300 group-hover:scale-105">
               <img
                 src="/brand/gs-logo.jpeg"
                 alt="GS Elétrica e Manutenção - Gilmar Sales"
-                className="w-full h-full object-cover rounded-xl"
+                className="w-full h-full object-contain rounded-xl"
               />
             </div>
 
@@ -285,9 +285,9 @@ export default async function HomePage() {
                   href={whatsAppLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-success hover:bg-success/90 text-bg-base font-bold text-xs shadow-md transition-all active:scale-95"
+                  className="inline-flex items-center justify-center gap-2.5 px-5 py-3 rounded-xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
                 >
-                  <MessageCircle className="w-4 h-4 fill-current" />
+                  <IconWhatsApp size={18} />
                   <span>Chamar no WhatsApp</span>
                 </a>
               </div>
@@ -381,31 +381,103 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* RODAPÉ OFICIAL COM A LOGO ENVIADA PELO CLIENTE (GS-LOGO) */}
-        <footer className="pt-8 border-t border-border-subtle text-center space-y-4">
-          <div className="flex flex-col items-center justify-center gap-3">
-            <div className="relative w-28 h-28 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_20px_rgba(0,132,255,0.35)] bg-surface-2 p-1">
-              <img
-                src="/brand/gs-logo.jpeg"
-                alt="GS Elétrica e Manutenção - Gilmar Sales"
-                className="w-full h-full object-cover rounded-xl"
-              />
+        {/* RODAPÉ MODERNO E ESTRUTURADO (SEM LOGO IMAGEM) */}
+        <footer className="pt-10 mt-6 border-t border-border-subtle text-text-muted space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+            {/* Coluna 1: Sobre a Empresa */}
+            <div className="space-y-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-heading font-black text-2xl text-[#0084ff] tracking-tight">
+                  GS
+                </span>
+                <span className="font-heading font-extrabold text-2xl text-[#ffe066] tracking-tight">
+                  Gilmar Sales
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-text-main tracking-wider uppercase">
+                Elétrica e Manutenção Industrial & Residencial
+              </p>
+              <p className="text-xs text-text-muted leading-relaxed">
+                Qualidade, segurança e confiança em cada instalação. Serviços executados por profissional qualificado e em total conformidade com as normas técnicas.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-2 border border-[#0084ff]/30 text-[11px] text-[#ffe066]">
+                <Zap className="w-3.5 h-3.5 fill-[#ffe066]" />
+                <span>Energia e segurança para você</span>
+              </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-heading font-black text-2xl text-[#0084ff] tracking-tight">
-                GS
-              </span>
-              <span className="font-heading font-extrabold text-2xl text-[#ffe066] tracking-tight">
-                Gilmar Sales
-              </span>
+
+            {/* Coluna 2: Serviços em Destaque */}
+            <div className="space-y-3">
+              <h4 className="font-heading text-sm font-bold text-text-main tracking-wide uppercase border-b border-border-subtle pb-2">
+                Serviços em Destaque
+              </h4>
+              <ul className="text-xs space-y-2 text-text-muted">
+                <li className="flex items-center gap-2 hover:text-[#ffe066] transition-colors">
+                  <span className="text-[#0084ff] font-bold">›</span>
+                  <span>Ligação e Reforma de Padrão CEMIG</span>
+                </li>
+                <li className="flex items-center gap-2 hover:text-[#ffe066] transition-colors">
+                  <span className="text-[#0084ff] font-bold">›</span>
+                  <span>Montagem de Quadro de Distribuição (QDF)</span>
+                </li>
+                <li className="flex items-center gap-2 hover:text-[#ffe066] transition-colors">
+                  <span className="text-[#0084ff] font-bold">›</span>
+                  <span>Manutenção Elétrica Industrial & Máquinas</span>
+                </li>
+                <li className="flex items-center gap-2 hover:text-[#ffe066] transition-colors">
+                  <span className="text-[#0084ff] font-bold">›</span>
+                  <span>Instalação de Motores e Inversores</span>
+                </li>
+                <li className="flex items-center gap-2 hover:text-[#ffe066] transition-colors">
+                  <span className="text-[#0084ff] font-bold">›</span>
+                  <span>Troca de Chuveiro, Disjuntores e Lâmpadas</span>
+                </li>
+              </ul>
             </div>
-            <p className="text-xs text-text-muted">
-              Elétrica e Manutenção Industrial e Residencial • Visconde do Rio Branco - MG
-            </p>
+
+            {/* Coluna 3: Atendimento & Contato Rápido */}
+            <div className="space-y-3">
+              <h4 className="font-heading text-sm font-bold text-text-main tracking-wide uppercase border-b border-border-subtle pb-2">
+                Atendimento & Região
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="w-4 h-4 text-gold shrink-0 mt-0.5" />
+                  <span>Visconde do Rio Branco - MG e cidades da região</span>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <Clock className="w-4 h-4 text-gold shrink-0 mt-0.5" />
+                  <span>Segunda a Sexta: 07:00 às 18:00 • Sábado: 07:00 às 13:00</span>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <a
+                  href={whatsAppLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 text-[#25D366] border border-[#25D366]/40 text-xs font-bold transition-all hover:border-[#25D366]"
+                >
+                  <IconWhatsApp size={16} />
+                  <span>WhatsApp: (32) 98871-4986</span>
+                </a>
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-text-muted">
-            &copy; {new Date().getFullYear()} GS Elétrica e Manutenção. Todos os direitos reservados.
-          </p>
+
+          {/* Barra Inferior com Linha de Brilho */}
+          <div className="pt-6 border-t border-border-subtle/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left text-[11px] text-text-muted">
+            <p>
+              &copy; {new Date().getFullYear()} <strong>GS Elétrica e Manutenção</strong> — Gilmar Sales. Todos os direitos reservados.
+            </p>
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1 text-emerald-400">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Garantia e Segurança
+              </span>
+              <span>•</span>
+              <span className="text-[#0084ff]">Padrão ABNT / CEMIG</span>
+            </div>
+          </div>
         </footer>
       </main>
     </div>

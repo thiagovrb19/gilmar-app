@@ -222,10 +222,10 @@ DECLARE
   v_cliente_id UUID;
 BEGIN
   -- Se o email for no formato sintético: 55DDDNUMERO@cliente...
-  IF NEW.email LIKE '%@cliente.barbeariadoluiz.app' THEN
+  IF NEW.email LIKE '%@cliente.gseletrica.app' OR NEW.email LIKE '%@cliente.barbeariadoluiz.app' THEN
     v_phone := split_part(NEW.email, '@', 1);
 
-    -- Verifica se já existe ficha de cliente com este whatsapp cadastrada previamente pelo Luiz
+    -- Verifica se já existe ficha de cliente com este whatsapp cadastrada previamente pelo Gilmar
     SELECT id INTO v_cliente_id FROM public.clientes WHERE whatsapp = v_phone LIMIT 1;
 
     IF v_cliente_id IS NOT NULL THEN
