@@ -296,8 +296,35 @@ button, a, input, select, textarea {
 .metallic-card-selected {
   border-color: #ffe066 !important;
   background: linear-gradient(180deg, rgba(18, 27, 43, 0.95) 0%, rgba(12, 18, 29, 0.98) 100%) !important;
+  color: #ffffff !important;
   box-shadow: 0 4px 20px -2px rgba(0, 140, 255, 0.35), 0 0 14px rgba(255, 224, 102, 0.2), inset 0 1px 0 rgba(255, 240, 160, 0.4) !important;
   animation: electric-border-pulse 4s infinite ease-in-out;
+}
+
+/* Seleção de Dia: Texto sempre BRANCO com fundo destacado */
+.date-card-selected {
+  background: linear-gradient(135deg, rgba(0, 132, 255, 0.25) 0%, rgba(12, 18, 29, 0.95) 100%) !important;
+  border-color: #ffe066 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(0, 132, 255, 0.4), 0 0 8px rgba(255, 224, 102, 0.3) !important;
+  transform: scale(1.04);
+}
+
+.date-card-selected * {
+  color: #ffffff !important;
+}
+
+/* Seleção de Horário: Texto e borda VERDES brilhantes */
+.time-card-selected {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: #22c55e !important;
+  color: #22c55e !important;
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.35), inset 0 0 10px rgba(34, 197, 94, 0.1) !important;
+  transform: scale(1.03);
+}
+
+.time-card-selected * {
+  color: #4ade80 !important;
 }
 
 /* Card de Combo / Pacote com borda de destaque azul elétrico */
@@ -305,4 +332,32 @@ button, a, input, select, textarea {
   background: linear-gradient(165deg, rgba(16, 26, 44, 0.9) 0%, rgba(10, 16, 26, 0.95) 100%);
   border: 1px solid rgba(0, 140, 255, 0.5);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 240, 160, 0.2);
+}
+
+/* Gradiente Elétrico Azul para Amarelo */
+.gradient-blue-yellow {
+  background: linear-gradient(135deg, #0084ff 0%, #00b4d8 35%, #ffe066 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Efeito Vidro Elétrico (Glassmorphism Otimizado para Mobile) */
+.electric-glass {
+  background: rgba(12, 18, 29, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 132, 255, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+}
+
+.electric-glass:hover {
+  border-color: rgba(255, 224, 102, 0.45);
+  box-shadow: 0 8px 32px 0 rgba(0, 132, 255, 0.15), 0 0 15px rgba(255, 224, 102, 0.15);
+}
+
+/* Otimização de toque e fluidez mobile */
+@media (max-width: 640px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 }

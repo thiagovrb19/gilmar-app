@@ -36,7 +36,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.cdnfonts.com" />
         <link rel="stylesheet" href="https://fonts.cdnfonts.com/css/sf-pro-display" />
       </head>
-      <body className="min-h-[100dvh] flex flex-col bg-bg-base text-text-main selection:bg-gold/30 selection:text-gold pb-16 md:pb-0">
+      <body className="min-h-[100dvh] flex flex-col bg-bg-base text-text-main selection:bg-gold/30 selection:text-gold">
         {children}
         <Toaster
           position="top-center"

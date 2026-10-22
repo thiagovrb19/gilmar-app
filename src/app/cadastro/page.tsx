@@ -3,10 +3,9 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Phone, User, Calendar, ShieldCheck } from "lucide-react";
+import { Lock, Phone, User, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { BarberLogo } from "@/components/icons/barber-logo";
-import { ClientBottomNav } from "@/components/layout/client-bottom-nav";
 import { formatPhone } from "@/lib/formatters";
 import { cadastrarCliente } from "@/actions/auth";
 
@@ -14,7 +13,6 @@ export default function CadastroPage() {
   const router = useRouter();
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [dataNascimento, setDataNascimento] = useState("");
   const [senha, setSenha] = useState("");
   const [aceiteLgpd, setAceiteLgpd] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +28,6 @@ export default function CadastroPage() {
     const res = await cadastrarCliente({
       nome,
       whatsappRaw: whatsapp,
-      dataNascimento: dataNascimento || undefined,
       senha,
       aceiteLgpd: true,
     });
@@ -47,7 +44,7 @@ export default function CadastroPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-bg-base text-text-main px-4 py-8 pb-24 md:pb-8">
+    <div className="min-h-screen flex flex-col justify-center items-center bg-bg-base text-text-main px-4 py-8">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <Link href="/" className="inline-block">
@@ -57,7 +54,7 @@ export default function CadastroPage() {
             Criar Minha Conta
           </h1>
           <p className="text-xs text-text-muted">
-            Cadastre-se para agendar em poucos toques
+            Cadastre-se para solicitar serviços e orçamentos em poucos toques
           </p>
         </div>
 
@@ -79,7 +76,7 @@ export default function CadastroPage() {
             </div>
 
             <div>
-              <label className="text-xs text-text-muted block mb-1">WhatsApp:</label>
+              <label className="text-xs text-text-muted block mb-1">WhatsApp (Telefone):</label>
               <div className="relative">
                 <input
                   type="tel"
@@ -91,22 +88,6 @@ export default function CadastroPage() {
                 />
                 <Phone className="w-4 h-4 text-text-muted absolute left-3.5 top-3.5" />
               </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-text-muted block mb-1">Data de Aniversário (Opcional):</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={dataNascimento}
-                  onChange={(e) => setDataNascimento(e.target.value)}
-                  className="w-full bg-surface-2 border border-border-subtle rounded-xl pl-10 pr-3.5 py-3 text-sm text-text-main placeholder:text-text-muted/60 focus:outline-none focus:border-gold"
-                />
-                <Calendar className="w-4 h-4 text-text-muted absolute left-3.5 top-3.5" />
-              </div>
-              <span className="text-[10px] text-text-muted block mt-1">
-                Usado para vantagens e descontos de aniversário quando ativos.
-              </span>
             </div>
 
             <div>
@@ -167,8 +148,6 @@ export default function CadastroPage() {
           </Link>
         </div>
       </div>
-
-      <ClientBottomNav />
     </div>
   );
 }

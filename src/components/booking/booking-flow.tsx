@@ -508,7 +508,7 @@ export function BookingFlow({
                     isClosed
                       ? "opacity-35 bg-surface-1/40 border-border-subtle cursor-not-allowed"
                       : isSelected
-                      ? "metallic-card-selected text-bg-base border-gold ring-2 ring-gold/40 shadow-xl scale-105"
+                      ? "date-card-selected text-white border-gold ring-2 ring-gold/60 shadow-xl scale-105"
                       : isSpecial
                       ? "bg-gold/10 border-gold/50 text-text-main hover:border-gold hover:bg-gold/15"
                       : "bg-surface-1 border-border-subtle text-text-main hover:border-gold/50 hover:bg-surface-2"
@@ -522,14 +522,14 @@ export function BookingFlow({
 
                   <span
                     className={`text-[11px] font-medium capitalize ${
-                      isSelected ? "text-bg-base/80 font-bold" : "text-text-muted"
+                      isSelected ? "text-white font-bold" : "text-text-muted"
                     }`}
                   >
                     {formatWeekDayShort(dateObj)}
                   </span>
                   <span
                     className={`text-2xl font-bold font-heading leading-tight ${
-                      isSelected ? "text-bg-base" : isSpecial ? "text-gold" : "text-text-main"
+                      isSelected ? "text-white font-extrabold" : isSpecial ? "text-gold" : "text-text-main"
                     }`}
                   >
                     {dateObj.getDate()}
@@ -539,7 +539,7 @@ export function BookingFlow({
                       isClosed
                         ? "text-destructive font-semibold"
                         : isSelected
-                        ? "text-bg-base/90 font-bold"
+                        ? "text-white font-bold"
                         : isSpecial
                         ? "text-gold font-bold"
                         : "text-text-muted"
@@ -654,16 +654,16 @@ export function BookingFlow({
                     onClick={() => setSelectedSlot(slot)}
                     className={`py-3.5 px-4 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 active:scale-95 ${
                       isSelected
-                        ? "metallic-card-selected text-bg-base border-gold ring-2 ring-gold/40 shadow-lg scale-[1.03] font-bold"
+                        ? "time-card-selected text-emerald-400 border-emerald-500 ring-2 ring-emerald-500/60 shadow-lg scale-[1.03] font-bold"
                         : "bg-surface-1 border-border-subtle text-text-main hover:border-gold/50 hover:bg-surface-2"
                     }`}
                   >
-                    <span className="text-lg font-heading tracking-wide">
+                    <span className={`text-lg font-heading tracking-wide ${isSelected ? "text-emerald-400 font-extrabold" : "text-text-main"}`}>
                       {slot.hora_formatada}
                     </span>
                     <span
                       className={`text-[10px] ${
-                        isSelected ? "text-bg-base/80 font-bold" : "text-text-muted"
+                        isSelected ? "text-emerald-400/90 font-bold" : "text-text-muted"
                       }`}
                     >
                       60 min
@@ -868,28 +868,16 @@ export function BookingFlow({
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-text-muted block mb-1">WhatsApp:</label>
-                      <input
-                        type="tel"
-                        required
-                        value={authWhats}
-                        onChange={(e) => setAuthWhats(formatPhone(e.target.value))}
-                        placeholder="(32) 99999-9999"
-                        className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-text-muted block mb-1">Data de Nascimento (Aniversário):</label>
-                      <input
-                        type="date"
-                        value={authNascimento}
-                        onChange={(e) => setAuthNascimento(e.target.value)}
-                        className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">WhatsApp (Telefone):</label>
+                    <input
+                      type="tel"
+                      required
+                      value={authWhats}
+                      onChange={(e) => setAuthWhats(formatPhone(e.target.value))}
+                      placeholder="(32) 99999-9999"
+                      className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
+                    />
                   </div>
 
                   <div>

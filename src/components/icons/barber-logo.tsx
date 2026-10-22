@@ -15,25 +15,32 @@ export function GSLogo({
   subtitle = "ELÉTRICA E MANUTENÇÃO",
 }: LogoProps) {
   return (
-    <div className={`inline-flex items-center gap-3 ${className}`} suppressHydrationWarning>
-      {/* Emblema Elétrico GS */}
+    <div className={`inline-flex items-center gap-2.5 ${className}`} suppressHydrationWarning>
+      {/* Emblema com a logo enviada pelo cliente gs-logo */}
       <div
-        className="relative shrink-0 rounded-2xl bg-gradient-to-br from-[#0c1629] via-[#06090f] to-[#121c30] border border-[#0084ff]/60 shadow-[0_0_15px_rgba(0,132,255,0.3)] flex items-center justify-center p-1 group transition-all"
+        className="relative shrink-0 rounded-xl overflow-hidden bg-gradient-to-br from-[#0c1629] via-[#06090f] to-[#121c30] border-2 border-[#0084ff] shadow-[0_0_14px_rgba(0,132,255,0.4)] flex items-center justify-center p-0.5 group transition-transform active:scale-95"
         style={{ width: size, height: size }}
       >
-        <div className="flex items-center justify-center relative w-full h-full">
-          {/* Fundo sutil de raio */}
-          <Zap className="w-5 h-5 text-[#ffe066] fill-[#ffe066] drop-shadow-[0_0_8px_rgba(255,224,102,0.8)]" />
+        <img
+          src="/brand/gs-logo.jpeg"
+          alt="GS Elétrica"
+          className="w-full h-full object-cover rounded-lg"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+          <Zap className="w-5 h-5 text-[#ffe066] fill-[#ffe066]" />
         </div>
       </div>
 
       {showText && (
         <div className="flex flex-col text-left leading-none select-none" suppressHydrationWarning>
           <div className="flex items-baseline gap-1.5">
-            <span className="font-heading font-black text-xl sm:text-2xl text-[#0084ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,132,255,0.5)]">
+            <span className="font-heading font-black text-xl sm:text-2xl text-[#0084ff] tracking-tight drop-shadow-[0_0_12px_rgba(0,132,255,0.6)]">
               GS
             </span>
-            <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#ffe066] tracking-tight drop-shadow-[0_0_8px_rgba(255,224,102,0.4)]">
+            <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#ffe066] tracking-tight drop-shadow-[0_0_10px_rgba(255,224,102,0.5)]">
               Gilmar Sales
             </span>
           </div>
