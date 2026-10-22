@@ -8,7 +8,7 @@ import {
   CalendarCheck,
   Users,
   DollarSign,
-  Scissors,
+  Zap,
   Settings,
   ExternalLink,
   LogOut,
@@ -25,10 +25,10 @@ export function AdminSidebar() {
 
   const navItems = [
     { label: "Hoje (Dashboard)", href: "/admin", icon: CalendarDays, exact: true },
-    { label: "Agenda Completa", href: "/admin/agenda", icon: CalendarCheck },
+    { label: "Agenda de Serviços", href: "/admin/agenda", icon: CalendarCheck },
     { label: "Clientes", href: "/admin/clientes", icon: Users },
     { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
-    { label: "Serviços & Combos", href: "/admin/servicos", icon: Scissors },
+    { label: "Serviços Elétricos", href: "/admin/servicos", icon: Zap },
     { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
   ];
 
@@ -40,7 +40,7 @@ export function AdminSidebar() {
             <BarberLogo size={40} showText={true} />
           </Link>
           <div className="mt-3 px-2 py-1 bg-surface-2 rounded-lg border border-border-subtle flex items-center justify-between">
-            <span className="text-xs font-semibold text-gold">Painel do Luiz</span>
+            <span className="text-xs font-semibold text-gold">Painel do Gilmar</span>
             <span className="text-[10px] text-text-muted bg-bg-base px-2 py-0.5 rounded">Admin</span>
           </div>
         </div>

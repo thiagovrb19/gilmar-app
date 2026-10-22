@@ -16,7 +16,7 @@ export function ClientHeader() {
             href="/agendar"
             className="hidden sm:inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-bg-base bg-gold hover:bg-gold-hover transition-colors rounded-xl shadow-sm"
           >
-            Agendar Horário
+            Solicitar Orçamento
           </Link>
         </div>
       </div>

@@ -141,7 +141,7 @@ export function AdminSettingsView({
       {/* SEÇÃO 1: DADOS DA BARBEARIA & CONTATO */}
       <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 md:p-6 space-y-4">
         <h2 className="font-heading text-base font-bold text-text-main border-b border-border-subtle pb-2">
-          1. Dados da Barbearia & Contato
+          1. Dados da Empresa & Contato
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">

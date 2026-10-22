@@ -16,8 +16,8 @@ export function ClientBottomNav() {
 
   const items = [
     { label: "Início", href: "/", icon: Home },
-    { label: "Agendar", href: "/agendar", icon: Calendar, highlight: true },
-    { label: "Meus horários", href: "/meus-agendamentos", icon: Clock },
+    { label: "Solicitar", href: "/agendar", icon: Calendar, highlight: true },
+    { label: "Meus Pedidos", href: "/meus-agendamentos", icon: Clock },
     { label: "Perfil", href: "/perfil", icon: User },
   ];
 

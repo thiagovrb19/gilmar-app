@@ -5,7 +5,7 @@ import { getServicos } from "@/actions/booking";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Serviços & Combos | Painel do Luiz",
+  title: "Serviços Elétricos | Painel do Gilmar",
 };
 
 export default async function AdminServicosPage() {

@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    toast.success("Bem-vindo de volta, Luiz!");
+    toast.success("Bem-vindo de volta, Gilmar!");
     router.push("/admin");
     router.refresh();
   };
@@ -43,7 +43,7 @@ export default function AdminLoginPage() {
             <span>Painel Administrativo Restrito</span>
           </div>
           <p className="text-xs text-text-muted">
-            Área de gestão e controle exclusiva do Luiz
+            Área de gestão e controle exclusiva do Gilmar Sales
           </p>
         </div>
 

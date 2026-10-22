@@ -306,7 +306,7 @@ export function AdminServicesView({ servicos }: AdminServicesViewProps) {
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Limpeza de Orelha"
+                  placeholder="Ex: Instalação de Ventilador de Teto"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
@@ -317,7 +317,7 @@ export function AdminServicesView({ servicos }: AdminServicesViewProps) {
                 <label className="text-text-muted block mb-1">Descrição Curta:</label>
                 <input
                   type="text"
-                  placeholder="Ex: Acabamento e higienização com cera quente"
+                  placeholder="Ex: Montagem, fixação segura e ligação no interruptor"
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
                   className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
@@ -372,13 +372,15 @@ export function AdminServicesView({ servicos }: AdminServicesViewProps) {
                     onChange={(e) => setIcone(e.target.value)}
                     className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
                   >
-                    <option value="corte">Corte (Tesoura)</option>
-                    <option value="barba">Barba (Navalha)</option>
-                    <option value="combo">Combo (Estrela)</option>
-                    <option value="pezinho">Pezinho (Máquina)</option>
-                    <option value="sobrancelha">Sobrancelha (Pinça)</option>
-                    <option value="cavanhaque">Cavanhaque</option>
-                    <option value="pigmentacao">Pigmentação</option>
+                    <option value="raio">Energia / Raio</option>
+                    <option value="quadro">Quadro de Distribuição (QDF)</option>
+                    <option value="chuveiro">Chuveiro / Aquecedor</option>
+                    <option value="lampada">Iluminação / Spots LED</option>
+                    <option value="tomada">Tomadas e Interruptores</option>
+                    <option value="industrial">Industrial / Motores</option>
+                    <option value="ferramentas">Manutenção / Diagnóstico</option>
+                    <option value="padrao">Padrão CEMIG</option>
+                    <option value="combo">Pacote / Combo</option>
                   </select>
                 </div>
               </div>

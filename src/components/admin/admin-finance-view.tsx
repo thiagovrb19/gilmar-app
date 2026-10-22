@@ -234,7 +234,7 @@ export function AdminFinanceView({
       <html lang="pt-BR">
       <head>
         <meta charset="UTF-8">
-        <title>Relatório Financeiro - Barbearia do Luiz</title>
+        <title>Relatório Financeiro - GS Elétrica e Manutenção</title>
         <style>
           * { box-sizing: border-box; }
           body {
@@ -337,7 +337,7 @@ export function AdminFinanceView({
       <body>
         <div class="header">
           <div>
-            <h1 class="brand-title">Barbearia do Luiz</h1>
+            <h1 class="brand-title">GS Elétrica e Manutenção</h1>
             <div class="brand-sub">
               Relatório Financeiro &bull; Período: <strong>${periodoLabel}</strong> &bull; Gerado em: ${nowFormatted}
             </div>
@@ -391,7 +391,7 @@ export function AdminFinanceView({
         </table>
 
         <div class="footer">
-          Barbearia do Luiz &bull; Gestão Financeira &bull; Visconde do Rio Branco - MG
+          GS Elétrica e Manutenção &bull; Gestão Financeira &bull; Visconde do Rio Branco - MG
         </div>
 
         <script>

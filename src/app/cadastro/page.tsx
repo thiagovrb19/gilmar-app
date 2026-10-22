@@ -41,7 +41,7 @@ export default function CadastroPage() {
       return;
     }
 
-    toast.success("Conta criada com sucesso! Seja bem-vindo à Barbearia do Luiz.");
+    toast.success("Conta criada com sucesso! Seja bem-vindo à GS Elétrica e Manutenção.");
     router.push("/agendar");
     router.refresh();
   };
@@ -134,7 +134,7 @@ export default function CadastroPage() {
                 className="w-4 h-4 mt-0.5 rounded border-border-subtle text-gold accent-gold cursor-pointer"
               />
               <span className="text-[11px] text-text-muted leading-tight">
-                Autorizo o uso do meu WhatsApp e dados cadastrais exclusivamente para confirmações de agendamento e avisos da barbearia (LGPD).
+                Autorizo o uso do meu WhatsApp e dados cadastrais exclusivamente para confirmações de atendimentos e orçamentos da GS Elétrica e Manutenção (LGPD).
               </span>
             </label>
 

@@ -9,7 +9,7 @@ import {
   Users,
   DollarSign,
   MoreHorizontal,
-  Scissors,
+  Zap,
   Settings,
   LogOut,
   X,
@@ -70,10 +70,10 @@ export function AdminBottomNav() {
               className="flex items-center gap-3.5 p-3 rounded-xl hover:bg-surface-2 transition-colors text-text-main"
             >
               <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center text-gold">
-                <Scissors className="w-5 h-5" />
+                <Zap className="w-5 h-5" />
               </div>
               <div className="flex flex-col">
-                <span className="font-medium text-sm">Serviços e Combos</span>
+                <span className="font-medium text-sm">Serviços Elétricos</span>
                 <span className="text-xs text-text-muted">Preços, itens e ordem</span>
               </div>
             </Link>

@@ -156,7 +156,7 @@ export function AdminTodayDashboard({
             Visão Geral Diária
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-text-main">
-            Hoje na Barbearia
+            Hoje na GS Elétrica
           </h1>
           <p className="text-xs text-text-muted capitalize">
             {formatDateFriendly(new Date().toISOString())}
@@ -261,9 +261,9 @@ export function AdminTodayDashboard({
               const whatsAppLink = ag.cliente?.whatsapp
                 ? getWhatsAppLink(
                     ag.cliente.whatsapp,
-                    `Fala, ${ag.cliente.nome}! Passando para confirmar seu horário hoje às ${formatTimeSaoPaulo(
+                    `Fala, ${ag.cliente.nome}! Gilmar aqui passando para confirmar seu atendimento hoje às ${formatTimeSaoPaulo(
                       ag.inicio
-                    )} na Barbearia do Luiz.`
+                    )} com a GS Elétrica.`
                   )
                 : "#";
 
@@ -416,7 +416,7 @@ export function AdminTodayDashboard({
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {alertas.clientesSumidos.slice(0, 5).map((c) => {
-                const msg = `Fala, ${c.nome}! Faz ${c.dias_sem_vir} dias que você não aparece aqui na Barbearia do Luiz... Bora dar um talento no visual essa semana?`;
+                const msg = `Fala, ${c.nome}! Gilmar da GS Elétrica por aqui. Tudo bem? Passando para saber se você precisa de alguma manutenção elétrica ou nova instalação por aí!`;
                 const link = getWhatsAppLink(c.whatsapp, msg);
 
                 return (
@@ -466,7 +466,7 @@ export function AdminTodayDashboard({
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {alertas.aniversariantesSemana.map((c) => {
-                const msg = `Parabéns, ${c.nome}! O Luiz da Barbearia te deseja muitas felicidades e sucesso! Passa aqui para comemorar com visual alinhado!`;
+                const msg = `Parabéns, ${c.nome}! O Gilmar da GS Elétrica te deseja muitas felicidades, saúde e muito sucesso!`;
                 const link = getWhatsAppLink(c.whatsapp, msg);
 
                 return (

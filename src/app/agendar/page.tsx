@@ -8,8 +8,8 @@ import { getCurrentUser } from "@/actions/auth";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Agendar Horário | Barbearia do Luiz",
-  description: "Escolha seus serviços, data e horário ideal na Barbearia do Luiz sem filas.",
+  title: "Solicitar Orçamento e Serviços | GS Elétrica e Manutenção",
+  description: "Escolha seus serviços elétricos, data e anexe fotos para o Gilmar Sales da GS Elétrica e Manutenção.",
 };
 
 export default async function AgendarPage() {

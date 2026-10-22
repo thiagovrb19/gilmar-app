@@ -1,49 +1,46 @@
 -- ==============================================================================
--- SEED DE DADOS INICIAIS — BARBEARIA DO LUIZ
+-- SEED DE DADOS INICIAIS — GS ELÉTRICA E MANUTENÇÃO (GILMAR SALES)
 -- ==============================================================================
 
--- 1. Inserir Serviços Individuais (Tabela da Seção 2)
+-- 1. Inserir Serviços Elétricos e Industriais
 INSERT INTO public.servicos (id, nome, descricao, preco, duracao_min, icone, tipo, ativo, ordem)
 VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'Corte (máquina e tesoura)', 'Corte moderno ou clássico com acabamento perfeito', 25.00, 60, 'corte', 'avulso', true, 1),
-  ('c0000000-0000-0000-0000-000000000002', 'Barba', 'Desenho e alinhamento com toalha quente e navalha', 20.00, 60, 'barba', 'avulso', true, 2),
-  ('c0000000-0000-0000-0000-000000000003', 'Pezinho', 'Acabamento do corte nas laterais e nuca', 10.00, 60, 'pezinho', 'avulso', true, 3),
-  ('c0000000-0000-0000-0000-000000000004', 'Sobrancelha', 'Limpeza e alinhamento com pinça/navalha', 5.00, 60, 'sobrancelha', 'avulso', true, 4),
-  ('c0000000-0000-0000-0000-000000000005', 'Cavanhaque', 'Alinhamento e contorno preciso do cavanhaque', 5.00, 60, 'cavanhaque', 'avulso', true, 5),
-  ('c0000000-0000-0000-0000-000000000006', 'Pigmentação', 'Pigmentação para disfarçar falhas e realçar o corte', 15.00, 60, 'pigmentacao', 'avulso', true, 6),
-  -- Combos com desconto
-  ('c0000000-0000-0000-0000-000000000007', 'Combo: Cabelo + Barba', 'Corte completo e barba alinhada com toalha quente (Economize R$ 5,00)', 40.00, 60, 'combo', 'combo', true, 7),
-  ('c0000000-0000-0000-0000-000000000008', 'Cabelo, Sobrancelha e Cavanhaque', 'Visual alinhado completo (Economize R$ 5,00)', 30.00, 60, 'combo', 'combo', true, 8)
+  ('c0000000-0000-0000-0000-000000000001', 'Instalação / Troca de Padrão CEMIG', 'Montagem, adequação e ligação de padrão bifásico e trifásico conforme normas da concessionária.', 350.00, 120, 'padrao', 'avulso', true, 1),
+  ('c0000000-0000-0000-0000-000000000002', 'Adequação de Quadro de Distribuição (QDF)', 'Organização de barramentos, balanceamento de cargas, instalação de DR e DPS contra choques e surtos.', 180.00, 90, 'quadro', 'avulso', true, 2),
+  ('c0000000-0000-0000-0000-000000000003', 'Instalação / Troca de Chuveiro Elétrico', 'Instalação com fiação dimensionada, conectores adequados e verificação do disjuntor.', 60.00, 60, 'chuveiro', 'avulso', true, 3),
+  ('c0000000-0000-0000-0000-000000000004', 'Iluminação (Spots LED, Lustres e Fitas)', 'Instalação e alinhamento de luminárias modernas, painéis embutidos, trilhos e pendentes.', 45.00, 60, 'lampada', 'avulso', true, 4),
+  ('c0000000-0000-0000-0000-000000000005', 'Instalação de Tomadas e Interruptores', 'Substituição de tomadas 10A/20A, interruptores simples/paralelos e acabamentos.', 30.00, 45, 'tomada', 'avulso', true, 5),
+  ('c0000000-0000-0000-0000-000000000006', 'Diagnóstico Elétrico e Fuga de Corrente', 'Identificação e reparo de curtos-circuitos, desarmes repentinos e pontos de sobreaquecimento.', 120.00, 60, 'ferramentas', 'avulso', true, 6),
+  ('c0000000-0000-0000-0000-000000000007', 'Manutenção Industrial (Motores e Painéis)', 'Comandos elétricos, bombas d''água, partidas de motores e manutenção preventiva/corretiva.', 250.00, 120, 'industrial', 'avulso', true, 7),
+  ('c0000000-0000-0000-0000-000000000008', 'Reforma e Troca de Fiação Residencial', 'Passagem de novos cabos antichama, separação de circuitos e modernização da rede elétrica.', 450.00, 180, 'raio', 'avulso', true, 8),
+  ('c0000000-0000-0000-0000-000000000009', 'Pacote Check-up Elétrico Residencial', 'Revisão geral do quadro, reaperto de conexões, teste de aterramento e tomadas (Economize R$ 80,00).', 220.00, 120, 'combo', 'combo', true, 9)
 ON CONFLICT (id) DO UPDATE SET
   nome = EXCLUDED.nome,
   descricao = EXCLUDED.descricao,
   preco = EXCLUDED.preco,
   tipo = EXCLUDED.tipo,
-  ordem = EXCLUDED.ordem;
+  ordem = EXCLUDED.ordem,
+  icone = EXCLUDED.icone;
 
--- 2. Vincular Itens dos Combos
+-- 2. Vincular Itens do Combo Check-up
 INSERT INTO public.combo_itens (combo_id, servico_id)
 VALUES
-  -- Combo Cabelo + Barba
-  ('c0000000-0000-0000-0000-000000000007', 'c0000000-0000-0000-0000-000000000001'),
-  ('c0000000-0000-0000-0000-000000000007', 'c0000000-0000-0000-0000-000000000002'),
-  -- Combo Especial Cabelo + Sobrancelha + Cavanhaque
-  ('c0000000-0000-0000-0000-000000000008', 'c0000000-0000-0000-0000-000000000001'),
-  ('c0000000-0000-0000-0000-000000000008', 'c0000000-0000-0000-0000-000000000004'),
-  ('c0000000-0000-0000-0000-000000000008', 'c0000000-0000-0000-0000-000000000005')
+  ('c0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000002'),
+  ('c0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000005'),
+  ('c0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000006')
 ON CONFLICT DO NOTHING;
 
--- 3. Horário de Funcionamento Semanal (Segunda a Sábado)
+-- 3. Horário de Atendimento Padrão (Segunda a Sábado, das 07:00 às 18:00)
 DELETE FROM public.horario_funcionamento;
 INSERT INTO public.horario_funcionamento (dia_semana, abre, fecha, ativo)
 VALUES
-  (0, '09:00:00', '18:00:00', false), -- Domingo fechado
-  (1, '17:00:00', '21:00:00', true),  -- Segunda-feira
-  (2, '17:00:00', '21:00:00', true),  -- Terça-feira
-  (3, '17:00:00', '21:00:00', true),  -- Quarta-feira
-  (4, '17:00:00', '21:00:00', true),  -- Quinta-feira
-  (5, '17:00:00', '21:00:00', true),  -- Sexta-feira
-  (6, '12:00:00', '18:00:00', true);  -- Sábado (12:00 às 18:00)
+  (0, '08:00:00', '12:00:00', false), -- Domingo fechado (plantão sob consulta)
+  (1, '07:00:00', '18:00:00', true),  -- Segunda-feira
+  (2, '07:00:00', '18:00:00', true),  -- Terça-feira
+  (3, '07:00:00', '18:00:00', true),  -- Quarta-feira
+  (4, '07:00:00', '18:00:00', true),  -- Quinta-feira
+  (5, '07:00:00', '18:00:00', true),  -- Sexta-feira
+  (6, '07:00:00', '13:00:00', true);  -- Sábado
 
 -- 4. Configurações Globais Padrão
 INSERT INTO public.configuracoes (
@@ -70,13 +67,13 @@ INSERT INTO public.configuracoes (
   fidelidade_a_cada_visitas
 ) VALUES (
   1,
-  'Barbearia do Luiz',
-  '32999311712',
-  'Rua Ida Drey Benatti, 220 (Bairro Santa Clara)',
-  'https://www.google.com/maps/search/?api=1&query=Rua+Ida+Drey+Benatti+220+Santa+Clara+Visconde+do+Rio+Branco+MG',
-  '@luiz_fg7',
-  '+5532999311712',
-  'LUIZ FERNANDO GOUVEIA',
+  'GS Elétrica e Manutenção',
+  '32988714986',
+  'Atendimento em Visconde do Rio Branco - MG e região',
+  'https://www.google.com/maps/search/?api=1&query=Visconde+do+Rio+Branco+MG',
+  '@gseletricaemanutencao',
+  '32988714986',
+  'GILMAR SALES',
   'Visconde do Rio Branco',
   60,
   1,
@@ -87,28 +84,13 @@ INSERT INTO public.configuracoes (
   false,
   10.00,
   'semana',
-  15,
+  30,
   false,
   10
 ) ON CONFLICT (id) DO UPDATE SET
   nome_barbearia = EXCLUDED.nome_barbearia,
+  whatsapp_contato = EXCLUDED.whatsapp_contato,
   endereco = EXCLUDED.endereco,
   link_maps = EXCLUDED.link_maps,
   pix_chave = EXCLUDED.pix_chave,
   pix_nome = EXCLUDED.pix_nome;
-
--- 5. Agendar Execução Semanal via pg_cron para Agendamentos Fixos (Toda segunda-feira às 03:00)
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-    PERFORM cron.unschedule('gerar_agendamentos_fixos_semanal');
-    PERFORM cron.schedule(
-      'gerar_agendamentos_fixos_semanal',
-      '0 3 * * 1',
-      'SELECT public.gerar_agendamentos_fixos(4);'
-    );
-  END IF;
-EXCEPTION
-  WHEN OTHERS THEN
-    NULL; -- Ignorar caso pg_cron não esteja configurado no ambiente local
-END $$;

@@ -35,8 +35,8 @@ export default function LoginPage() {
   };
 
   const whatsAppLink = getWhatsAppLink(
-    "32999311712",
-    `Olá, Luiz! Esqueci minha senha no app da barbearia (meu WhatsApp: ${whatsapp}). Pode redefinir para mim?`
+    "32988714986",
+    `Olá, Gilmar! Esqueci minha senha no app da GS Elétrica (meu WhatsApp: ${whatsapp}). Pode me ajudar a acessar?`
   );
 
   return (

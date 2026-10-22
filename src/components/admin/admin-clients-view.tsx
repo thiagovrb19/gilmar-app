@@ -289,11 +289,11 @@ export function AdminClientsView({
             const isSumido = c.dias_sem_vir !== null && c.dias_sem_vir >= 15;
 
             // Mensagens contextuais para o WhatsApp
-            let waMsg = `Olá, ${c.nome}! Tudo bem? Luiz da barbearia aqui.`;
+            let waMsg = `Olá, ${c.nome}! Tudo bem? Gilmar da GS Elétrica e Manutenção aqui.`;
             if (isSumido) {
-              waMsg = `Fala, ${c.nome}! Faz ${c.dias_sem_vir} dias que você não aparece por aqui... Bora dar um talento no visual?`;
+              waMsg = `Fala, ${c.nome}! Tudo bem? Gilmar da GS Elétrica por aqui. Passando para saber se precisa de alguma revisão ou serviço elétrico por aí!`;
             } else if (filter === "aniversariantes") {
-              waMsg = `Parabéns pelo seu aniversário, ${c.nome}! O Luiz da Barbearia te deseja muito sucesso e um abraço!`;
+              waMsg = `Parabéns pelo seu aniversário, ${c.nome}! O Gilmar da GS Elétrica te deseja muitas felicidades, saúde e sucesso!`;
             }
 
             const waLink = getWhatsAppLink(c.whatsapp, waMsg);

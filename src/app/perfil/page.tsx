@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/actions/auth";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Meu Perfil | Barbearia do Luiz",
+  title: "Meu Perfil | GS Elétrica e Manutenção",
 };
 
 export default async function PerfilPage() {

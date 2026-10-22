@@ -3,17 +3,17 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Barbearia do Luiz | Agendamento e Gestão",
-  description: "Agende seu horário na Barbearia do Luiz com rapidez, sem espera e sem complicação. Atendimento exclusivo com hora marcada.",
+  title: "GS Elétrica e Manutenção | Gilmar Sales",
+  description: "Eletricista profissional em Visconde do Rio Branco - MG e região. Instalações industriais e residenciais, manutenção preventiva e corretiva com segurança, qualidade e confiança.",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/brand/logo.png",
-    apple: "/brand/logo.png",
+    icon: "/brand/gs-logo.jpg",
+    apple: "/brand/gs-logo.jpg",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Barbearia do Luiz",
+    title: "GS Elétrica",
   },
 };
 
