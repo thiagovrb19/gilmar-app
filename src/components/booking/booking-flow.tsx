@@ -632,7 +632,7 @@ export function BookingFlow({
               </h3>
               <p className="text-xs text-text-muted max-w-xs mx-auto">
                 {initialDiasExcecao.some((e) => e.data === selectedDate && e.tipo === "fechado")
-                  ? "A barbearia estará fechada nesta data por motivo de feriado ou imprevisto."
+                  ? "Não haverá atendimentos externos nesta data por motivo de feriado ou compromisso agendado."
                   : "Todos os horários desta data já foram preenchidos ou não há vagas disponíveis. Por favor, escolha outro dia."}
               </p>
               <button

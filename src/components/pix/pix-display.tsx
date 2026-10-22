@@ -19,8 +19,8 @@ interface PixDisplayProps {
 
 export function PixDisplay({
   valor,
-  chave = "+5532999311712",
-  nomeRecebedor = "LUIZ FERNANDO GOUVEIA",
+  chave = "32988714986",
+  nomeRecebedor = "GILMAR SALES",
   cidade = "Visconde do Rio Branco",
   txid = "***",
   descricao,

@@ -1,11 +1,11 @@
 {
-  "name": "Barbearia do Luiz",
-  "short_name": "Barbearia Luiz",
-  "description": "Agendamento online e gestão exclusiva da Barbearia do Luiz",
+  "name": "GS Elétrica e Manutenção - Gilmar Sales",
+  "short_name": "GS Elétrica",
+  "description": "Atendimento e serviços elétricos com Gilmar Sales",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0E0D0B",
-  "theme_color": "#0E0D0B",
+  "background_color": "#06090F",
+  "theme_color": "#06090F",
   "orientation": "portrait-primary",
   "icons": [
     {

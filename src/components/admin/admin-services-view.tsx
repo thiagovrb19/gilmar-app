@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Scissors,
+  Zap,
   Plus,
   Edit2,
   Check,
@@ -174,10 +174,10 @@ export function AdminServicesView({ servicos }: AdminServicesViewProps) {
             Catálogo & Preços
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-text-main">
-            Serviços & Combos
+            Serviços Elétricos
           </h1>
           <p className="text-xs text-text-muted">
-            Cadastre novos serviços (ex: limpeza de orelha, cera de nariz) e combos
+            Cadastre e gerencie serviços e orçamentos (instalações, padrões CEMIG, manutenção e quadros)
           </p>
         </div>
 

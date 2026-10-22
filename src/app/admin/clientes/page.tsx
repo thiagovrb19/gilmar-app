@@ -6,7 +6,7 @@ import { getServicos } from "@/actions/booking";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Clientes | Painel do Luiz",
+  title: "Clientes | GS Gilmar Sales",
 };
 
 export default async function AdminClientesPage() {

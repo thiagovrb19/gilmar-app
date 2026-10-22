@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import { Zap } from "lucide-react";
 
 interface LogoProps {
@@ -10,41 +9,35 @@ interface LogoProps {
 }
 
 export function GSLogo({
-  size = 40,
-  showText = false,
+  size = 42,
+  showText = true,
   className = "",
-  subtitle = "Elétrica & Manutenção",
+  subtitle = "ELÉTRICA E MANUTENÇÃO",
 }: LogoProps) {
   return (
-    <div className={`inline-flex items-center gap-2.5 ${className}`} suppressHydrationWarning>
+    <div className={`inline-flex items-center gap-3 ${className}`} suppressHydrationWarning>
+      {/* Emblema Elétrico GS */}
       <div
-        className="relative shrink-0 rounded-2xl overflow-hidden shadow-lg ring-1 ring-gold/50 bg-gradient-to-br from-blue-950 via-slate-900 to-amber-950 flex items-center justify-center"
+        className="relative shrink-0 rounded-2xl bg-gradient-to-br from-[#0c1629] via-[#06090f] to-[#121c30] border border-[#0084ff]/60 shadow-[0_0_15px_rgba(0,132,255,0.3)] flex items-center justify-center p-1 group transition-all"
         style={{ width: size, height: size }}
       >
-        <Image
-          src="/brand/gs-logo.jpg"
-          alt="GS Elétrica e Manutenção - Gilmar Sales"
-          width={size * 2}
-          height={size * 2}
-          className="w-full h-full object-cover"
-          priority
-        />
-        {/* Fallback overlay glow */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+        <div className="flex items-center justify-center relative w-full h-full">
+          {/* Fundo sutil de raio */}
+          <Zap className="w-5 h-5 text-[#ffe066] fill-[#ffe066] drop-shadow-[0_0_8px_rgba(255,224,102,0.8)]" />
+        </div>
       </div>
 
       {showText && (
-        <div className="flex flex-col leading-tight" suppressHydrationWarning>
-          <div className="flex items-center gap-1">
-            <span className="font-heading text-blue-400 font-extrabold text-lg tracking-wider">
+        <div className="flex flex-col text-left leading-none select-none" suppressHydrationWarning>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-heading font-black text-xl sm:text-2xl text-[#0084ff] tracking-tight drop-shadow-[0_0_10px_rgba(0,132,255,0.5)]">
               GS
             </span>
-            <span className="font-heading text-gold font-bold text-lg">
+            <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#ffe066] tracking-tight drop-shadow-[0_0_8px_rgba(255,224,102,0.4)]">
               Gilmar Sales
             </span>
-            <Zap className="w-3.5 h-3.5 text-gold fill-gold shrink-0 animate-pulse" />
           </div>
-          <span className="text-[10px] text-text-muted font-semibold tracking-wide uppercase">
+          <span className="text-[9px] sm:text-[10px] text-[#94a3b8] font-bold tracking-[0.2em] uppercase mt-0.5">
             {subtitle}
           </span>
         </div>

@@ -98,7 +98,7 @@ export default function LoginPage() {
             {showForgot && (
               <div className="bg-surface-2/70 border border-border-gold/40 rounded-xl p-3 text-xs space-y-2 animate-in fade-in duration-200">
                 <p className="text-text-muted leading-relaxed">
-                  Para sua segurança, a redefinição de senha é feita diretamente com o Luiz pelo WhatsApp:
+                  Para sua segurança, a redefinição de senha é feita diretamente com o Gilmar pelo WhatsApp:
                 </p>
                 <a
                   href={whatsAppLink}
@@ -107,7 +107,7 @@ export default function LoginPage() {
                   className="inline-flex items-center gap-2 bg-success/20 hover:bg-success/30 text-success font-medium px-3 py-1.5 rounded-lg transition-colors text-xs w-full justify-center"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  <span>Falar com o Luiz no WhatsApp</span>
+                  <span>Falar com o Gilmar no WhatsApp</span>
                 </a>
               </div>
             )}

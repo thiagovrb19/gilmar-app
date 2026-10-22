@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata = {
-  title: "Agenda | Painel do Luiz",
+  title: "Agenda de Serviços | GS Gilmar Sales",
 };
 
 export default async function AdminAgendaPage() {

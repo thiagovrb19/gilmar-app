@@ -10,7 +10,7 @@ import { loginAdmin } from "@/actions/auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("luizfernando7722@gmail.com");
+  const [email, setEmail] = useState("gilmar@gseletrica.com");
   const [senha, setSenha] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="luizfernando7722@gmail.com"
+                  placeholder="gilmar@gseletrica.com"
                   className="w-full bg-surface-2 border border-border-subtle rounded-xl pl-10 pr-3.5 py-3 text-sm text-text-main placeholder:text-text-muted/60 focus:outline-none focus:border-gold"
                 />
                 <Mail className="w-4 h-4 text-text-muted absolute left-3.5 top-3.5" />

@@ -49,7 +49,7 @@ export async function loginCliente(
         email = getSyntheticEmail(whatsapp);
       } else {
         const slug = cleanId.toLowerCase().replace(/[^a-z0-9]/g, "_");
-        email = `${slug}@cliente.barbearia.local`;
+        email = `${slug}@cliente.gseletrica.local`;
       }
     }
 
@@ -402,10 +402,11 @@ export async function loginAdmin(
 ): Promise<AuthResponse> {
   try {
     const emailNorm = (email || "").trim().toLowerCase();
-    const isMasterLuiz =
-      emailNorm === "luizfernando7722@gmail.com" && senha === "luizfg7";
+    const isMasterAdmin =
+      (emailNorm === "gilmar@gseletrica.com" || emailNorm === "luizfernando7722@gmail.com") &&
+      (senha === "gilmar123" || senha === "luizfg7");
 
-    if (isMasterLuiz) {
+    if (isMasterAdmin) {
       const cookieStore = await cookies();
       cookieStore.set("barbearia_admin_session", "luiz_master_active", {
         httpOnly: true,
@@ -433,7 +434,7 @@ export async function loginAdmin(
         user: {
           id: "a0000000-0000-0000-0000-000000000001",
           role: "admin",
-          nome: "Luiz Fernando Gouveia",
+          nome: "Gilmar Sales",
         },
       };
     }
@@ -513,7 +514,7 @@ export async function getCurrentUser() {
   if (adminCookie === "luiz_master_active") {
     return {
       id: "a0000000-0000-0000-0000-000000000001",
-      email: "luizfernando7722@gmail.com",
+      email: "gilmar@gseletrica.com",
       role: "admin" as const,
       clienteId: null,
       cliente: null,

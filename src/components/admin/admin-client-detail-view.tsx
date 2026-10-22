@@ -145,7 +145,7 @@ export function AdminClientDetailView({
 
   const waLink = getWhatsAppLink(
     cliente.whatsapp,
-    `Fala, ${cliente.nome}! Luiz da barbearia aqui.`
+    `Fala, ${cliente.nome}! Gilmar da GS Elétrica e Manutenção aqui.`
   );
 
   const handleResetPassword = async (e: React.FormEvent) => {

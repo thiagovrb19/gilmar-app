@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Calendar,
   Clock,
@@ -43,19 +42,29 @@ export default async function HomePage() {
           <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Banner / Flyer oficial */}
-          <div className="relative shrink-0 w-full md:w-80 aspect-[16/9] sm:aspect-[16/10] rounded-2xl overflow-hidden ring-2 ring-gold/50 shadow-2xl bg-surface-2 group">
-            <Image
-              src="/brand/gs-banner.jpg"
-              alt="GS Elétrica e Manutenção - Gilmar Sales"
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 320px"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-2 left-2 right-2 text-center text-[10px] font-bold text-gold bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg">
-              ⚡ Energia para o seu dia a dia!
+          {/* Emblema Textual / Card Principal GS Gilmar Sales */}
+          <div className="relative shrink-0 w-full md:w-80 rounded-2xl overflow-hidden border-2 border-[#0084ff]/50 bg-gradient-to-br from-[#0c121d] via-[#06090f] to-[#121b2b] p-6 shadow-2xl flex flex-col items-center justify-center text-center group">
+            <div className="relative w-20 h-20 rounded-2xl bg-[#06090f] border-2 border-[#0084ff] flex items-center justify-center shadow-[0_0_25px_rgba(0,132,255,0.4)] mb-3">
+              <Zap className="w-10 h-10 text-[#ffe066] fill-[#ffe066] drop-shadow-[0_0_12px_rgba(255,224,102,0.9)] animate-pulse" />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-center gap-2">
+                <span className="font-heading font-black text-4xl text-[#0084ff] tracking-tight drop-shadow-[0_0_15px_rgba(0,132,255,0.7)]">
+                  GS
+                </span>
+                <span className="font-heading font-extrabold text-3xl text-[#ffe066] tracking-tight drop-shadow-[0_0_15px_rgba(255,224,102,0.6)]">
+                  Gilmar Sales
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-[#94a3b8] tracking-[0.25em] uppercase">
+                Elétrica e Manutenção
+              </p>
+            </div>
+
+            <div className="mt-4 w-full py-2 px-3 rounded-xl bg-black/60 border border-[#0084ff]/30 text-[11px] text-[#ffe066] font-semibold flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#0084ff]" />
+              <span>Industrial • Residencial • Padrão CEMIG</span>
             </div>
           </div>
 
@@ -66,12 +75,21 @@ export default async function HomePage() {
               <span>Industrial • Residencial • Manutenção Preventiva & Corretiva</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-extrabold font-heading text-text-main leading-tight">
-              GS Elétrica e Manutenção
-            </h1>
+            <div className="flex items-baseline justify-center md:justify-start gap-2 pt-1">
+              <span className="font-heading font-black text-4xl sm:text-5xl text-[#0084ff] tracking-tight drop-shadow-[0_0_15px_rgba(0,132,255,0.6)]">
+                GS
+              </span>
+              <span className="font-heading font-extrabold text-4xl sm:text-5xl text-[#ffe066] tracking-tight drop-shadow-[0_0_12px_rgba(255,224,102,0.5)]">
+                Gilmar Sales
+              </span>
+            </div>
+
+            <h2 className="text-lg sm:text-xl font-bold font-heading text-text-main tracking-wide">
+              Elétrica e Manutenção Industrial e Residencial
+            </h2>
 
             <p className="text-sm sm:text-base text-text-muted leading-relaxed">
-              Serviços elétricos com segurança, qualidade e confiança. Atendimento especializado em Visconde do Rio Branco e região pelo profissional <strong>Gilmar Sales</strong>.
+              Serviços elétricos profissionais com segurança, qualidade e confiança. Atendimento em Visconde do Rio Branco e região pelo eletricista <strong>Gilmar Sales</strong>.
             </p>
 
             {/* Destaque do recurso de anexar fotos */}

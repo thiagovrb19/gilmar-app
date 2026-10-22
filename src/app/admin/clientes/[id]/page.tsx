@@ -13,7 +13,7 @@ interface PageProps {
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Ficha do Cliente | Painel do Luiz",
+  title: "Ficha do Cliente | GS Gilmar Sales",
 };
 
 export default async function AdminClienteDetalhePage({ params }: PageProps) {

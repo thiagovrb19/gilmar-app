@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const metadata = {
-  title: "Hoje | Painel do Luiz",
+  title: "Hoje | GS Gilmar Sales",
 };
 
 export default async function AdminHojePage() {

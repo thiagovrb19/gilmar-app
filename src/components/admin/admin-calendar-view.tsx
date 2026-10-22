@@ -438,7 +438,7 @@ export function AdminCalendarView({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-destructive text-sm">
-                    🛑 Barbearia Fechada nesta Data
+                    🛑 Fechado para Atendimento nesta Data
                   </span>
                   <span className="bg-destructive/20 text-destructive text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {currentExcecao.motivo || "Feriado / Imprevisto"}
@@ -1316,7 +1316,7 @@ export function AdminCalendarView({
                     onClick={() => handleRestaurarPadrao()}
                     className="w-full bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text-main font-semibold text-xs py-2.5 rounded-xl border border-border-subtle transition-colors"
                   >
-                    ↺ Restaurar Expediente Normal da Barbearia
+                    ↺ Restaurar Expediente Normal de Atendimento
                   </button>
                 )}
               </div>

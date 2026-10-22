@@ -138,7 +138,7 @@ export function AdminSettingsView({
         </button>
       </div>
 
-      {/* SEÇÃO 1: DADOS DA BARBEARIA & CONTATO */}
+      {/* SEÇÃO 1: DADOS DA EMPRESA & CONTATO */}
       <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 md:p-6 space-y-4">
         <h2 className="font-heading text-base font-bold text-text-main border-b border-border-subtle pb-2">
           1. Dados da Empresa & Contato
@@ -195,7 +195,7 @@ export function AdminSettingsView({
               type="text"
               value={config.instagram || ""}
               onChange={(e) => setConfig({ ...config, instagram: e.target.value })}
-              placeholder="@luiz_fg7"
+              placeholder="@gseletricaemanutencao"
               className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
             />
           </div>
@@ -231,7 +231,7 @@ export function AdminSettingsView({
               onChange={(e) => setConfig({ ...config, pix_nome: e.target.value })}
               className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
             />
-            <span className="text-[10px] text-text-muted block mt-1">LUIZ FERNANDO GOUVEIA</span>
+            <span className="text-[10px] text-text-muted block mt-1">GILMAR SALES</span>
           </div>
 
           <div>

@@ -43,7 +43,7 @@ export function normalizePhone(raw: string): string {
 /** Gera o e-mail sintético para autenticação sem custo no Supabase Auth */
 export function getSyntheticEmail(rawPhone: string): string {
   const normalized = normalizePhone(rawPhone);
-  return `${normalized}@cliente.barbeariadoluiz.app`;
+  return `${normalized}@cliente.gseletrica.app`;
 }
 
 /** Gera link do WhatsApp com mensagem pré-preenchida */

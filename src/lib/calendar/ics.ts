@@ -18,7 +18,7 @@ function formatICSDate(date: Date | string): string {
 export function generateICSContent({
   title,
   description,
-  location = "Barbearia do Luiz",
+  location = "GS Elétrica e Manutenção - Gilmar Sales",
   startDate,
   endDate,
 }: CalendarEventOptions): string {
@@ -29,11 +29,11 @@ export function generateICSContent({
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Barbearia do Luiz//Agendamento//PT-BR",
+    "PRODID:-//GS Eletrica e Manutencao//Atendimentos//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:barbearia-luiz-${Date.now()}@barbeariadoluiz.app`,
+    `UID:gs-eletrica-${Date.now()}@gseletrica.com.br`,
     `DTSTAMP:${stampStr}`,
     `DTSTART:${startStr}`,
     `DTEND:${endStr}`,
@@ -47,7 +47,7 @@ export function generateICSContent({
 }
 
 /** Dispara o download do arquivo .ics no navegador do cliente */
-export function downloadICSFile(options: CalendarEventOptions, filename = "agendamento-barbearia-luiz.ics") {
+export function downloadICSFile(options: CalendarEventOptions, filename = "atendimento-gs-eletrica.ics") {
   const content = generateICSContent(options);
   const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);

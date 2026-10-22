@@ -535,7 +535,7 @@ export function AdminClientsView({
               <div className="bg-surface-2/60 border border-border-gold/30 p-3 rounded-xl space-y-1">
                 <span className="font-bold text-gold flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Sincronização com a Agenda do Luiz
+                  Sincronização com a Agenda do Gilmar
                 </span>
                 <p className="text-[11px] text-text-muted leading-relaxed">
                   Os horários serão reservados e bloqueados para novos clientes públicos. Conflitos de agenda são verificados automaticamente antes de cada inserção.

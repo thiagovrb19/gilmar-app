@@ -7,7 +7,7 @@ import { Cliente } from "@/lib/supabase/types";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Financeiro | Painel do Luiz",
+  title: "Financeiro | GS Gilmar Sales",
 };
 
 export default async function AdminFinanceiroPage() {

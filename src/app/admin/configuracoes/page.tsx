@@ -5,7 +5,7 @@ import { getConfiguracoes, getServicos, getHorariosFuncionamento } from "@/actio
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Configurações | Painel do Luiz",
+  title: "Configurações | GS Gilmar Sales",
 };
 
 export default async function AdminConfiguracoesPage() {
