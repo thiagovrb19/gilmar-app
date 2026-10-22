@@ -42,32 +42,13 @@ export default async function HomePage() {
           <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
 
           {/* Logo Oficial Enviada pelo Cliente (gs-logo) */}
-          <div className="relative shrink-0 w-full md:w-80 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 bg-gradient-to-br from-[#0c121d] via-[#06090f] to-[#121b2b] p-5 shadow-2xl flex flex-col items-center justify-center text-center group">
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_22px_rgba(0,132,255,0.4)] mb-3 bg-[#0c121d] p-1.5 transition-transform duration-300 group-hover:scale-105">
+          <div className="relative shrink-0 w-full md:w-auto flex items-center justify-center">
+            <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_25px_rgba(0,132,255,0.4)] bg-[#0c121d] p-2 transition-transform duration-300 hover:scale-105">
               <img
                 src="/brand/gs-logo.jpeg"
                 alt="GS Elétrica e Manutenção - Gilmar Sales"
                 className="w-full h-full object-contain rounded-xl"
               />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-baseline justify-center gap-2">
-                <span className="font-heading font-black text-3xl text-[#0084ff] tracking-tight drop-shadow-[0_0_15px_rgba(0,132,255,0.7)]">
-                  GS
-                </span>
-                <span className="font-heading font-extrabold text-2xl text-[#ffe066] tracking-tight drop-shadow-[0_0_15px_rgba(255,224,102,0.6)]">
-                  Gilmar Sales
-                </span>
-              </div>
-              <p className="text-[11px] font-bold text-[#94a3b8] tracking-[0.22em] uppercase">
-                Elétrica e Manutenção
-              </p>
-            </div>
-
-            <div className="mt-3.5 w-full py-2 px-3 rounded-xl bg-black/60 border border-[#0084ff]/30 text-[11px] text-[#ffe066] font-semibold flex items-center justify-center gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#0084ff]" />
-              <span>Industrial • Residencial • Padrão CEMIG</span>
             </div>
           </div>
 
