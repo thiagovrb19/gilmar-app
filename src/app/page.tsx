@@ -43,7 +43,7 @@ export default async function HomePage() {
 
           {/* Logo Oficial Enviada pelo Cliente (gs-logo) */}
           <div className="relative shrink-0 w-full md:w-auto flex items-center justify-center">
-            <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_25px_rgba(0,132,255,0.4)] bg-[#0c121d] p-2 transition-transform duration-300 hover:scale-105">
+            <div className="relative sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_25px_rgba(0,132,255,0.4)] bg-[#0c121d] p-2 transition-transform duration-300 hover:scale-105">
               <img
                 src="/brand/gs-logo.jpeg"
                 alt="GS Elétrica e Manutenção - Gilmar Sales"
