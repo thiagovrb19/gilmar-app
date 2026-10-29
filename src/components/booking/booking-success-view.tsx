@@ -12,21 +12,26 @@ import {
   MessageCircle,
   Copy,
   ExternalLink,
+  FileText,
+  Printer,
+  Check,
 } from "lucide-react";
 import { PixDisplay } from "@/components/pix/pix-display";
 import { downloadICSFile } from "@/lib/calendar/ics";
 import { formatCurrency } from "@/lib/formatters";
 import { formatDateFriendly, formatTimeSaoPaulo } from "@/lib/date/tz";
-import { Configuracao } from "@/lib/supabase/types";
+import { Configuracao, PropostaItemDetalhe } from "@/lib/supabase/types";
 import { IconWhatsApp } from "@/components/icons/barber-icons";
 import {
   WHATSAPP_COMERCIAL,
+  WHATSAPP_GILMAR_DISPLAY,
   numeroDoPedido,
   agruparItens,
   linkWhatsAppPedido,
   montarMensagemPedido,
   ResumoPedido,
 } from "@/lib/whatsapp";
+import { abrirPropostaPDF, formatarDataBR, calcularValidadeBR } from "@/lib/pdf/proposta-pdf";
 import { toast } from "sonner";
 
 interface BookingSuccessViewProps {
@@ -37,12 +42,18 @@ interface BookingSuccessViewProps {
   resumo?: {
     id: string;
     clienteNome: string;
+    clienteLocalidade?: string | null;
     inicio: string | null;
     valorTotal: number;
     desconto: number;
     observacao: string | null;
-    servicos: { nome: string; preco: number }[];
+    propostaSubtitulo?: string | null;
+    propostaObjetivo?: string | null;
+    propostaCondicoesPagamento?: string | null;
+    propostaItensJson?: PropostaItemDetalhe[] | null;
+    servicos: { nome: string; preco: number; descricao?: string | null; icone?: string }[];
     anexosCount: number;
+    anexosUrls?: string[];
   } | null;
   anexosCount?: number;
 }
@@ -57,12 +68,25 @@ export function BookingSuccessView({
 }: BookingSuccessViewProps) {
   const [showPix, setShowPix] = useState(false);
   const [appLink, setAppLink] = useState<string>("");
+  const [pdfGerado, setPdfGerado] = useState(false);
+  const [localItemFotos, setLocalItemFotos] = useState<(string | null)[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setAppLink(`${window.location.origin}/meus-agendamentos`);
+      try {
+        const savedFotos = sessionStorage.getItem(`proposta_fotos_${agendamentoId}`);
+        if (savedFotos) {
+          const parsed = JSON.parse(savedFotos);
+          if (Array.isArray(parsed)) {
+            setLocalItemFotos(parsed);
+          }
+        }
+      } catch {
+        // ignora
+      }
     }
-  }, []);
+  }, [agendamentoId]);
 
   const dataHoraInicio = new Date(inicioIso);
   const dataHoraFim = new Date(dataHoraInicio.getTime() + 60 * 60 * 1000);
@@ -72,22 +96,99 @@ export function BookingSuccessView({
 
   const finalAnexosCount = Math.max(anexosCount, resumo?.anexosCount || 0);
   const pedidoNum = numeroDoPedido(agendamentoId);
+  const valorFinal = valorTotal > 0 ? valorTotal : (resumo?.valorTotal || 0);
+
+  const itensProposta: PropostaItemDetalhe[] =
+    resumo?.propostaItensJson && resumo.propostaItensJson.length > 0
+      ? resumo.propostaItensJson.map((it, idx) => ({
+          ...it,
+          fotoUrl: localItemFotos[idx] || it.fotoUrl || resumo?.anexosUrls?.[idx] || null,
+        }))
+      : (resumo?.servicos || []).map((srv, idx) => {
+          const num = String(idx + 1).padStart(2, "0");
+          const ident = `Máquina ${num}`;
+          return {
+            numero: num,
+            identificacao: ident,
+            servicoNome: srv.nome,
+            escopo: `Execução de ${srv.nome.toLowerCase()} na ${ident}.`,
+            descricao: `${srv.descricao || `Fornecimento e instalação de ${srv.nome.toLowerCase()}.`} Materiais e mão de obra inclusos.`,
+            quantidade: 1,
+            valorUnitario: srv.preco,
+            valorTotal: srv.preco,
+            fotoUrl: localItemFotos[idx] || resumo?.anexosUrls?.[idx] || null,
+            icone: srv.icone,
+          };
+        });
 
   // Monta objeto consolidado para a mensagem do WhatsApp
   const pedidoResumo: ResumoPedido = {
     id: agendamentoId,
     numero: pedidoNum,
     clienteNome: resumo?.clienteNome || "Cliente",
+    clienteLocalidade: resumo?.clienteLocalidade || "Visconde do Rio Branco - MG",
     inicio: inicioIso,
-    itens: agruparItens(resumo?.servicos || []),
+    itens:
+      itensProposta.length > 0
+        ? itensProposta.map((i) => ({
+            nome: i.servicoNome,
+            quantidade: i.quantidade,
+            valorUnitario: i.valorUnitario,
+            identificacao: i.identificacao,
+            escopo: i.escopo,
+          }))
+        : agruparItens(resumo?.servicos || []),
     desconto: resumo?.desconto || 0,
-    valorTotal: valorTotal > 0 ? valorTotal : (resumo?.valorTotal || 0),
+    valorTotal: valorFinal,
     observacao: resumo?.observacao || null,
     anexosCount: finalAnexosCount,
+    subtitulo: resumo?.propostaSubtitulo || null,
+    objetivo: resumo?.propostaObjetivo || null,
+    condicoesPagamento: resumo?.propostaCondicoesPagamento || null,
+    pdfGerado: true,
   };
 
   const whatsAppLink = linkWhatsAppPedido(pedidoResumo, appLink);
   const whatsAppTexto = montarMensagemPedido(pedidoResumo, appLink);
+
+  const handleGerarPDF = () => {
+    const ok = abrirPropostaPDF({
+      numeroPedido: pedidoNum,
+      clienteNome: resumo?.clienteNome || "Cliente",
+      clienteLocalidade: resumo?.clienteLocalidade || "Visconde do Rio Branco - MG",
+      dataProposta: formatarDataBR(new Date()),
+      validadeProposta: calcularValidadeBR(new Date(), 10),
+      subtitulo: resumo?.propostaSubtitulo || null,
+      objetivo: resumo?.propostaObjetivo || null,
+      condicoesPagamento: resumo?.propostaCondicoesPagamento || null,
+      observacaoCliente: resumo?.observacao || null,
+      itens:
+        itensProposta.length > 0
+          ? itensProposta
+          : [
+              {
+                numero: "01",
+                identificacao: "Máquina 01",
+                servicoNome: "Serviço Elétrico Especializado",
+                escopo: "Execução de serviço elétrico conforme solicitação.",
+                descricao: "Fornecimento técnico e mão de obra inclusos.",
+                quantidade: 1,
+                valorUnitario: valorFinal,
+                valorTotal: valorFinal,
+                fotoUrl: resumo?.anexosUrls?.[0] || null,
+              },
+            ],
+      valorTotal: valorFinal,
+    });
+
+    if (!ok) {
+      toast.error("Permita pop-ups no seu navegador para gerar o PDF da proposta.");
+      return;
+    }
+
+    setPdfGerado(true);
+    toast.success("Proposta Comercial em PDF gerada! Agora encaminhe para o Gilmar no WhatsApp.");
+  };
 
   const handleCopiarMensagem = async () => {
     try {
@@ -182,39 +283,69 @@ export function BookingSuccessView({
           </div>
         </div>
 
-        {/* INTEGRAÇÃO WHATSAPP EM DESTAQUE */}
-        <div className="bg-gradient-to-b from-success/15 to-success/5 border border-success/40 rounded-2xl p-5 max-w-md mx-auto space-y-3 shadow-lg">
-          <div className="flex items-center gap-3 text-left">
-            <div className="w-10 h-10 rounded-xl bg-success text-bg-base flex items-center justify-center shrink-0 shadow-md">
-              <IconWhatsApp size={22} />
+        {/* PASSO 1 E 2: GERAR PROPOSTA COMERCIAL EM PDF E ENCAMINHAR NO WHATSAPP DO GILMAR */}
+        <div className="bg-gradient-to-b from-[#0c1626] to-surface-2 border-2 border-[#0284c7]/50 rounded-2xl p-5 max-w-md mx-auto space-y-4 shadow-xl text-left">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#0284c7] text-white flex items-center justify-center shrink-0 shadow-md">
+              <Printer className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#38bdf8]">
+                Passo Final Obrigatório
+              </span>
               <h3 className="font-heading text-sm font-bold text-text-main leading-snug">
-                Falar com o Gilmar no WhatsApp
+                Gere o PDF do seu Orçamento e Encaminhe ao Gilmar
               </h3>
-              <p className="text-[11px] text-text-muted">
-                Envie os detalhes do seu pedido e as fotos direto para o Gilmar: (32) 98871-4986
+              <p className="text-[11px] text-text-muted mt-0.5">
+                1º Baixe a Proposta Comercial em PDF (com logo, escopo e assinaturas) e 2º envie para o WhatsApp do Gilmar ({WHATSAPP_GILMAR_DISPLAY}).
               </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleGerarPDF}
+            className="w-full inline-flex items-center justify-center gap-2.5 bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-sm py-3.5 px-5 rounded-xl shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>{pdfGerado ? "Baixar / Imprimir Orçamento em PDF Novamente" : "1º Gerar Orçamento Completo em PDF"}</span>
+          </button>
 
           <a
             href={whatsAppLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full inline-flex items-center justify-center gap-2.5 bg-success hover:bg-success/90 text-bg-base font-bold text-sm py-3.5 px-5 rounded-xl shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+            onClick={() => {
+              if (!pdfGerado) {
+                handleGerarPDF();
+              }
+            }}
+            className={`w-full inline-flex items-center justify-center gap-2.5 font-bold text-sm py-3.5 px-5 rounded-xl shadow-lg transition-all active:scale-[0.98] cursor-pointer ${
+              pdfGerado
+                ? "bg-[#25D366] hover:bg-[#20bd5a] text-white ring-2 ring-[#25D366]/60 animate-pulse"
+                : "bg-success hover:bg-success/90 text-bg-base"
+            }`}
           >
             <IconWhatsApp size={20} />
-            <span>Abrir WhatsApp com o Pedido Pronto</span>
+            <span>2º Encaminhar Orçamento no WhatsApp ({WHATSAPP_GILMAR_DISPLAY})</span>
           </a>
+
+          {pdfGerado && (
+            <div className="bg-success/15 border border-success/40 rounded-xl p-2.5 text-[11px] text-success flex items-center gap-2">
+              <Check className="w-4 h-4 shrink-0 stroke-[3]" />
+              <span>
+                PDF gerado! Na conversa do WhatsApp que se abrirá, basta anexar o PDF salvo e enviar ao Gilmar.
+              </span>
+            </div>
+          )}
 
           <button
             type="button"
             onClick={handleCopiarMensagem}
-            className="inline-flex items-center justify-center gap-1.5 text-[11px] text-text-muted hover:text-text-main transition-colors mx-auto"
+            className="w-full inline-flex items-center justify-center gap-1.5 text-[11px] text-text-muted hover:text-text-main transition-colors pt-1"
           >
             <Copy className="w-3.5 h-3.5" />
-            <span>Copiar texto da mensagem</span>
+            <span>Copiar resumo em texto</span>
           </button>
         </div>
 

@@ -9,7 +9,7 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 
 /** Formata número para moeda brasileira R$ */
 export function formatCurrency(valor: number): string {
-  return currencyFormatter.format(valor || 0);
+  return currencyFormatter.format(valor || 0).replace(/\u00A0/g, " ");
 }
 
 /** Formata string de dígitos no padrão (32) 99999-9999 */
@@ -46,9 +46,13 @@ export function getSyntheticEmail(rawPhone: string): string {
   return `${normalized}@cliente.gseletrica.app`;
 }
 
-/** Gera link do WhatsApp com mensagem pré-preenchida */
+/** Gera link do WhatsApp com mensagem pré-preenchida (sem emojis/caracteres que geram símbolo inválido) */
 export function getWhatsAppLink(phone: string, message: string): string {
   const normalized = normalizePhone(phone);
-  const encoded = encodeURIComponent(message);
+  const cleanMessage = (message || "")
+    .replace(/\u00A0/g, " ")
+    .replace(/\uFFFD/g, "")
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "");
+  const encoded = encodeURIComponent(cleanMessage);
   return `https://wa.me/${normalized}?text=${encoded}`;
 }

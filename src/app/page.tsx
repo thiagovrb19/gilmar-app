@@ -37,23 +37,23 @@ export default async function HomePage() {
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 pt-6 space-y-12">
         {/* BANNER OFICIAL HERO GS GILMAR SALES */}
-        <section className="relative overflow-hidden rounded-3xl electric-glass border border-border-gold/40 shadow-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center gap-8">
+        <section className="relative overflow-hidden rounded-3xl electric-glass border border-border-gold/40 shadow-2xl p-5 sm:p-8 flex flex-col items-center gap-6">
           <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-gold/15 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Logo Oficial Enviada pelo Cliente (gs-logo) */}
-          <div className="relative shrink-0 w-full md:w-auto flex items-center justify-center">
-            <div className="relative sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_25px_rgba(0,132,255,0.4)] bg-[#0c121d] p-2 transition-transform duration-300 hover:scale-105">
+          {/* Nova Logo Oficial Wide (gs-logo) no topo da aplicação */}
+          <div className="relative w-full z-10">
+            <div className="relative w-full rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_28px_rgba(0,132,255,0.4)] bg-[#05080f]">
               <img
-                src="/brand/gs-logo.jpeg"
-                alt="GS Elétrica e Manutenção - Gilmar Sales"
-                className="w-full h-full object-contain rounded-xl"
+                src="/brand/gs-logo.jpg?v=2"
+                alt="GS Elétrica e Manutenção Industrial e Residencial - Gilmar Sales"
+                className="w-full h-auto max-h-[260px] sm:max-h-[300px] object-contain mx-auto block"
               />
             </div>
           </div>
 
           {/* Textos de Apresentação */}
-          <div className="space-y-4 text-center md:text-left flex-1 z-10">
+          <div className="space-y-4 text-center md:text-left w-full z-10">
             <div className="inline-flex items-center gap-2 bg-surface-2/90 border border-border-gold/40 px-3 py-1 rounded-full text-xs text-gold">
               <Zap className="w-3.5 h-3.5 fill-gold animate-pulse" />
               <span>Qualidade, segurança e confiança para você!</span>

@@ -490,6 +490,12 @@ export async function criarAgendamentoAction(params: {
   inicio: string;
   observacao?: string;
   clienteId?: string;
+  propostaSubtitulo?: string;
+  propostaObjetivo?: string;
+  propostaCondicoesPagamento?: string;
+  clienteLocalidade?: string;
+  propostaItensJson?: import("@/lib/supabase/types").PropostaItemDetalhe[];
+  valorTotalOverride?: number;
 }): Promise<{
   success: boolean;
   agendamento_id?: string;
@@ -519,6 +525,12 @@ export async function criarAgendamentoAction(params: {
         inicio: params.inicio,
         observacao: params.observacao,
         origem: "app",
+        propostaSubtitulo: params.propostaSubtitulo,
+        propostaObjetivo: params.propostaObjetivo,
+        propostaCondicoesPagamento: params.propostaCondicoesPagamento,
+        clienteLocalidade: params.clienteLocalidade,
+        propostaItensJson: params.propostaItensJson,
+        valorTotalOverride: params.valorTotalOverride,
       });
       revalidatePath("/admin/agenda");
       revalidatePath("/admin");
@@ -664,6 +676,26 @@ export async function criarAgendamentoAction(params: {
     });
 
     if (!rpcError && rpcData?.success) {
+      if (rpcData.agendamento_id) {
+        try {
+          await adminSupabase
+            .from("agendamentos")
+            .update({
+              ...(params.valorTotalOverride && params.valorTotalOverride > 0
+                ? { valor_total: params.valorTotalOverride }
+                : {}),
+              proposta_subtitulo: params.propostaSubtitulo || null,
+              proposta_objetivo: params.propostaObjetivo || null,
+              proposta_condicoes_pagamento: params.propostaCondicoesPagamento || null,
+              cliente_localidade: params.clienteLocalidade || null,
+              proposta_itens_json: params.propostaItensJson || null,
+            })
+            .eq("id", rpcData.agendamento_id);
+        } catch {
+          // Colunas opcionais ainda não criadas no banco; segue normalmente
+        }
+      }
+
       revalidatePath("/admin/agenda");
       revalidatePath("/admin");
       revalidatePath("/admin/financeiro");
@@ -671,12 +703,18 @@ export async function criarAgendamentoAction(params: {
       revalidatePath("/meus-agendamentos");
       revalidatePath("/agendar");
 
-      return rpcData as {
-        success: boolean;
-        agendamento_id?: string;
-        valor_total?: number;
-        desconto?: number;
-        error?: string;
+      return {
+        ...(rpcData as {
+          success: boolean;
+          agendamento_id?: string;
+          valor_total?: number;
+          desconto?: number;
+          error?: string;
+        }),
+        valor_total:
+          params.valorTotalOverride && params.valorTotalOverride > 0
+            ? params.valorTotalOverride
+            : rpcData.valor_total,
       };
     }
 
@@ -686,7 +724,13 @@ export async function criarAgendamentoAction(params: {
       .select("id, preco")
       .in("id", params.servicosIds);
 
-    const valorTotal = (servicosDb || []).reduce((acc, s) => acc + Number(s.preco), 0);
+    const valorCalculado = (servicosDb || []).reduce((acc, s) => acc + Number(s.preco), 0);
+    const valorTotal =
+      params.valorTotalOverride && params.valorTotalOverride > 0
+        ? params.valorTotalOverride
+        : valorCalculado > 0
+        ? valorCalculado
+        : 25;
 
     const { data: novoAg, error: agErr } = await adminSupabase
       .from("agendamentos")
@@ -696,7 +740,7 @@ export async function criarAgendamentoAction(params: {
         fim: fimDate.toISOString(),
         status: "agendado",
         origem: "app",
-        valor_total: valorTotal > 0 ? valorTotal : 25,
+        valor_total: valorTotal,
         desconto: 0,
         observacao: params.observacao || null,
       })
@@ -705,6 +749,21 @@ export async function criarAgendamentoAction(params: {
 
     if (agErr || !novoAg) {
       return { success: false, error: agErr?.message || rpcError?.message || "Erro ao agendar" };
+    }
+
+    try {
+      await adminSupabase
+        .from("agendamentos")
+        .update({
+          proposta_subtitulo: params.propostaSubtitulo || null,
+          proposta_objetivo: params.propostaObjetivo || null,
+          proposta_condicoes_pagamento: params.propostaCondicoesPagamento || null,
+          cliente_localidade: params.clienteLocalidade || null,
+          proposta_itens_json: params.propostaItensJson || null,
+        })
+        .eq("id", novoAg.id);
+    } catch {
+      // ignora se a migration 006 ainda não foi rodada
     }
 
     if (params.servicosIds.length > 0) {
@@ -955,12 +1014,18 @@ export async function enviarAvaliacaoAction(
 export async function getAgendamentoResumoAction(agendamentoId: string): Promise<{
   id: string;
   clienteNome: string;
+  clienteLocalidade?: string | null;
   inicio: string | null;
   valorTotal: number;
   desconto: number;
   observacao: string | null;
-  servicos: { nome: string; preco: number }[];
+  propostaSubtitulo?: string | null;
+  propostaObjetivo?: string | null;
+  propostaCondicoesPagamento?: string | null;
+  propostaItensJson?: import("@/lib/supabase/types").PropostaItemDetalhe[] | null;
+  servicos: { nome: string; preco: number; descricao?: string | null; icone?: string }[];
   anexosCount: number;
+  anexosUrls?: string[];
 } | null> {
   if (!agendamentoId) return null;
 
@@ -976,32 +1041,42 @@ export async function getAgendamentoResumoAction(agendamentoId: string): Promise
       return {
         id: ag.id,
         clienteNome: ag.cliente?.nome || "Cliente",
+        clienteLocalidade: ag.cliente_localidade || null,
         inicio: ag.inicio || null,
         valorTotal: Number(ag.valor_total) || 0,
         desconto: Number(ag.desconto) || 0,
         observacao: ag.observacao || null,
+        propostaSubtitulo: ag.proposta_subtitulo || null,
+        propostaObjetivo: ag.proposta_objetivo || null,
+        propostaCondicoesPagamento: ag.proposta_condicoes_pagamento || null,
+        propostaItensJson: ag.proposta_itens_json || null,
         servicos: (ag.servicos || []).map((s) => ({
           nome: s.nome,
           preco: Number(s.preco) || 0,
+          descricao: s.descricao || null,
+          icone: s.icone,
         })),
         anexosCount: anexos.length,
+        anexosUrls: anexos.map((a) => a.storage_path),
       };
     }
 
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const supabase = createAdminClient();
+    const { ANEXOS_BUCKET, ANEXO_SIGNED_URL_TTL } = await import("@/lib/anexos/config");
 
     const [agRes, anexosRes] = await Promise.all([
       supabase
         .from("agendamentos")
-        .select("*, cliente:clientes(nome), agendamento_servicos(preco_cobrado, servicos(nome, preco))")
+        .select("*, cliente:clientes(nome), agendamento_servicos(preco_cobrado, servicos(nome, preco, descricao, icone))")
         .eq("id", agendamentoId)
         .maybeSingle(),
       supabase
         .from("agendamento_anexos")
-        .select("id", { count: "exact", head: true })
+        .select("id, storage_path")
         .eq("agendamento_id", agendamentoId)
-        .eq("status", "enviado"),
+        .eq("status", "enviado")
+        .order("criado_em", { ascending: true }),
     ]);
 
     if (!agRes.data) return null;
@@ -1010,17 +1085,40 @@ export async function getAgendamentoResumoAction(agendamentoId: string): Promise
     const servicos = (ag.agendamento_servicos || []).map((asv: any) => ({
       nome: asv.servicos?.nome || "Serviço",
       preco: Number(asv.preco_cobrado ?? asv.servicos?.preco ?? 0),
+      descricao: asv.servicos?.descricao || null,
+      icone: asv.servicos?.icone,
     }));
+
+    const anexosRows = anexosRes.data || [];
+    const anexosUrls: string[] = [];
+    for (const row of anexosRows) {
+      try {
+        const { data: signed } = await supabase.storage
+          .from(ANEXOS_BUCKET)
+          .createSignedUrl(row.storage_path, ANEXO_SIGNED_URL_TTL);
+        if (signed?.signedUrl) {
+          anexosUrls.push(signed.signedUrl);
+        }
+      } catch {
+        // ignora erro de assinatura individual
+      }
+    }
 
     return {
       id: ag.id,
       clienteNome: (ag.cliente as any)?.nome || "Cliente",
+      clienteLocalidade: ag.cliente_localidade || null,
       inicio: ag.inicio || null,
       valorTotal: Number(ag.valor_total) || 0,
       desconto: Number(ag.desconto) || 0,
       observacao: ag.observacao || null,
+      propostaSubtitulo: ag.proposta_subtitulo || null,
+      propostaObjetivo: ag.proposta_objetivo || null,
+      propostaCondicoesPagamento: ag.proposta_condicoes_pagamento || null,
+      propostaItensJson: ag.proposta_itens_json || null,
       servicos,
-      anexosCount: anexosRes.count || 0,
+      anexosCount: anexosRows.length,
+      anexosUrls,
     };
   } catch (err) {
     console.error("Erro ao buscar resumo do agendamento:", err);

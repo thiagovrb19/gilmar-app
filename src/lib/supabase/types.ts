@@ -73,10 +73,43 @@ export interface Agendamento {
   cancelado_por: string | null;
   motivo_cancelamento: string | null;
   observacao: string | null;
+  proposta_subtitulo?: string | null;
+  proposta_objetivo?: string | null;
+  proposta_condicoes_pagamento?: string | null;
+  cliente_localidade?: string | null;
+  proposta_itens_json?: PropostaItemDetalhe[] | null;
   criado_em: string;
   cliente?: Cliente;
   servicos?: Servico[];
   anexos?: AnexoVisualizacao[];
+}
+
+export interface PropostaItemDetalhe {
+  numero: string; // "01", "02", etc.
+  identificacao: string; // ex: "Máquina 01" ou "Ambiente / Ponto 01"
+  servicoNome: string; // ex: "Painel completo com botão de emergência"
+  escopo: string; // ex: "Instalação de painel completo com botão de emergência na Máquina 01."
+  descricao: string; // ex: "Fornecimento e instalação de painel completo com botão de emergência. Materiais e mão de obra inclusos."
+  quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
+  fotoUrl?: string | null;
+  icone?: string;
+}
+
+export interface EstoquePeca {
+  id: string;
+  nome: string;
+  categoria: string;
+  valor_unitario: number;
+  quantidade: number;
+  estoque_minimo: number;
+  unidade: string;
+  observacao: string | null;
+  ativo: boolean;
+  ordem: number;
+  criado_em: string;
+  atualizado_em: string;
 }
 
 export interface AgendamentoServico {

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
-import { Agendamento, Cliente, HorarioFixo, Bloqueio, Multa, Servico, ClienteEstatistica, AgendamentoOrigem, Lancamento } from "./supabase/types";
+import { Agendamento, Cliente, HorarioFixo, Bloqueio, Multa, Servico, ClienteEstatistica, AgendamentoOrigem, Lancamento, EstoquePeca, PropostaItemDetalhe } from "./supabase/types";
+import { DEFAULT_ESTOQUE_PECAS } from "./estoque-seed";
 
 export const DEMO_SERVICOS_STATIC: Servico[] = [
   {
@@ -159,6 +160,7 @@ interface MockDataStore {
   lancamentos?: Lancamento[];
   servicos?: Servico[];
   anexos?: import("./supabase/types").AgendamentoAnexo[];
+  estoquePecas?: EstoquePeca[];
 }
 
 const STORE_PATH = path.join(process.cwd(), ".local-data", "mock-db.json");
@@ -274,6 +276,9 @@ export function loadStore(): MockDataStore {
     if (!memoryStore.bloqueios) memoryStore.bloqueios = [];
     if (!memoryStore.lancamentos) memoryStore.lancamentos = [];
     if (!memoryStore.anexos) memoryStore.anexos = [];
+    if (!memoryStore.estoquePecas || memoryStore.estoquePecas.length === 0) {
+      memoryStore.estoquePecas = [...DEFAULT_ESTOQUE_PECAS];
+    }
     return memoryStore;
   }
 
@@ -287,6 +292,9 @@ export function loadStore(): MockDataStore {
         if (!memoryStore.horariosFixos) memoryStore.horariosFixos = [];
         if (!memoryStore.lancamentos) memoryStore.lancamentos = [];
         if (!memoryStore.anexos) memoryStore.anexos = [];
+        if (!memoryStore.estoquePecas || memoryStore.estoquePecas.length === 0) {
+          memoryStore.estoquePecas = [...DEFAULT_ESTOQUE_PECAS];
+        }
       }
       return memoryStore!;
     }
@@ -365,6 +373,12 @@ export function mockCriarAgendamento(params: {
   inicio: string;
   observacao?: string;
   origem?: AgendamentoOrigem;
+  propostaSubtitulo?: string;
+  propostaObjetivo?: string;
+  propostaCondicoesPagamento?: string;
+  clienteLocalidade?: string;
+  propostaItensJson?: PropostaItemDetalhe[];
+  valorTotalOverride?: number;
 }): { success: boolean; agendamento: Agendamento; error?: string } {
   const store = loadStore();
 
@@ -383,8 +397,15 @@ export function mockCriarAgendamento(params: {
     store.clientes.push(cliente);
   }
 
-  const servicosMarcados = DEMO_SERVICOS_STATIC.filter((s) => params.servicosIds.includes(s.id));
-  const valorTotal = servicosMarcados.reduce((acc, s) => acc + s.preco, 0);
+  const catalog = store.servicos && store.servicos.length > 0 ? store.servicos : DEMO_SERVICOS_STATIC;
+  const servicosMarcados = catalog.filter((s) => params.servicosIds.includes(s.id));
+  const valorCalculado = servicosMarcados.reduce((acc, s) => acc + s.preco, 0);
+  const valorTotal =
+    params.valorTotalOverride && params.valorTotalOverride > 0
+      ? params.valorTotalOverride
+      : valorCalculado > 0
+      ? valorCalculado
+      : 25.0;
 
   // Calcula fim (60min padrão)
   const inicioDate = new Date(params.inicio);
@@ -399,7 +420,7 @@ export function mockCriarAgendamento(params: {
     status: "agendado",
     origem: params.origem || "app",
     horario_fixo_id: null,
-    valor_total: valorTotal > 0 ? valorTotal : 25.0,
+    valor_total: valorTotal,
     desconto: 0,
     pago: false,
     forma_pagamento: "pix",
@@ -408,6 +429,11 @@ export function mockCriarAgendamento(params: {
     cancelado_por: null,
     motivo_cancelamento: null,
     observacao: params.observacao || null,
+    proposta_subtitulo: params.propostaSubtitulo || null,
+    proposta_objetivo: params.propostaObjetivo || null,
+    proposta_condicoes_pagamento: params.propostaCondicoesPagamento || null,
+    cliente_localidade: params.clienteLocalidade || null,
+    proposta_itens_json: params.propostaItensJson || null,
     criado_em: new Date().toISOString(),
     cliente,
     servicos: servicosMarcados.length > 0 ? servicosMarcados : [DEMO_SERVICOS_STATIC[0]],
@@ -906,4 +932,92 @@ export function mockExcluirAnexo(anexoId: string): boolean {
   saveStore(store);
   return store.anexos.length < initialLen;
 }
+
+/** Lista todas as peças do estoque no mock store */
+export function mockGetEstoquePecas(): EstoquePeca[] {
+  const store = loadStore();
+  if (!store.estoquePecas || store.estoquePecas.length === 0) {
+    store.estoquePecas = [...DEFAULT_ESTOQUE_PECAS];
+    saveStore(store);
+  }
+  return [...store.estoquePecas].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+}
+
+/** Salva ou atualiza uma peça do estoque no mock store */
+export function mockSalvarEstoquePeca(peca: Partial<EstoquePeca>): EstoquePeca {
+  const store = loadStore();
+  if (!store.estoquePecas || store.estoquePecas.length === 0) {
+    store.estoquePecas = [...DEFAULT_ESTOQUE_PECAS];
+  }
+  const now = new Date().toISOString();
+
+  if (peca.id) {
+    const idx = store.estoquePecas.findIndex((p) => p.id === peca.id);
+    if (idx >= 0) {
+      store.estoquePecas[idx] = {
+        ...store.estoquePecas[idx],
+        ...peca,
+        atualizado_em: now,
+      };
+      saveStore(store);
+      return store.estoquePecas[idx];
+    }
+  }
+
+  const novaPeca: EstoquePeca = {
+    id: peca.id || "peca-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 6),
+    nome: (peca.nome || "NOVA PEÇA").toUpperCase(),
+    categoria: peca.categoria || "Outros",
+    valor_unitario: Number(peca.valor_unitario ?? 0),
+    quantidade: Math.max(0, Math.floor(Number(peca.quantidade ?? 0))),
+    estoque_minimo: Math.max(0, Math.floor(Number(peca.estoque_minimo ?? 2))),
+    unidade: peca.unidade || "un",
+    observacao: peca.observacao || null,
+    ativo: peca.ativo ?? true,
+    ordem: peca.ordem ?? store.estoquePecas.length + 1,
+    criado_em: now,
+    atualizado_em: now,
+  };
+
+  store.estoquePecas.push(novaPeca);
+  saveStore(store);
+  return novaPeca;
+}
+
+/** Ajusta rapidamente a quantidade em estoque (+1, -1 ou valor direto) */
+export function mockAjustarQuantidadeEstoque(id: string, novaQuantidade: number): EstoquePeca | null {
+  const store = loadStore();
+  if (!store.estoquePecas || store.estoquePecas.length === 0) {
+    store.estoquePecas = [...DEFAULT_ESTOQUE_PECAS];
+  }
+  const idx = store.estoquePecas.findIndex((p) => p.id === id);
+  if (idx < 0) return null;
+
+  store.estoquePecas[idx] = {
+    ...store.estoquePecas[idx],
+    quantidade: Math.max(0, Math.floor(novaQuantidade)),
+    atualizado_em: new Date().toISOString(),
+  };
+  saveStore(store);
+  return store.estoquePecas[idx];
+}
+
+/** Exclui uma peça do estoque no mock store */
+export function mockExcluirEstoquePeca(id: string): boolean {
+  const store = loadStore();
+  if (!store.estoquePecas) return false;
+  const initialLen = store.estoquePecas.length;
+  store.estoquePecas = store.estoquePecas.filter((p) => p.id !== id);
+  saveStore(store);
+  return store.estoquePecas.length < initialLen;
+}
+
+/** Restaura a planilha original Gilmar.xlsx no mock store */
+export function mockRestaurarEstoquePadrao(): EstoquePeca[] {
+  const store = loadStore();
+  store.estoquePecas = [...DEFAULT_ESTOQUE_PECAS];
+  saveStore(store);
+  return store.estoquePecas;
+}
+
 

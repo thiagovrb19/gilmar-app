@@ -13,6 +13,7 @@ import {
   Sparkles,
   ChevronRight,
   ShieldAlert,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Agendamento, Multa, Configuracao } from "@/lib/supabase/types";
@@ -22,6 +23,8 @@ import { formatDateFriendly, formatTimeSaoPaulo, toSaoPaulo } from "@/lib/date/t
 import { cancelarMeuAgendamentoAction, enviarAvaliacaoAction } from "@/actions/booking";
 import { useRealtimeSync, broadcastSync } from "@/hooks/use-realtime-sync";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
+import { abrirPropostaPDF } from "@/lib/pdf/proposta-pdf";
+import { WHATSAPP_COMERCIAL } from "@/lib/whatsapp";
 
 interface ClientBookingsViewProps {
   proximos: Agendamento[];
@@ -278,13 +281,56 @@ export function ClientBookingsView({
                       Cancelar Horário
                     </button>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const itensDetalhados =
+                            ag.proposta_itens_json && ag.proposta_itens_json.length > 0
+                              ? ag.proposta_itens_json
+                              : (ag.servicos || []).map((s, idx) => ({
+                                  numero: String(idx + 1).padStart(2, "0"),
+                                  identificacao: `Máquina / Ponto ${String(idx + 1).padStart(2, "0")}`,
+                                  servicoNome: s.nome,
+                                  escopo: `${s.nome} — execução técnica especializada conforme padrão GS Elétrica e Manutenção.`,
+                                  descricao:
+                                    s.descricao ||
+                                    "Fornecimento e instalação técnica especializada com materiais adequados, testes funcionais e acabamento profissional.",
+                                  quantidade: 1,
+                                  valorUnitario: Number(s.preco || 0),
+                                  valorTotal: Number(s.preco || 0),
+                                  fotoUrl: null,
+                                  icone: s.icone,
+                                }));
+
+                          const ok = abrirPropostaPDF({
+                            numeroPedido: ag.id.slice(0, 8).toUpperCase(),
+                            clienteNome: ag.cliente?.nome || "Cliente",
+                            clienteWhatsapp: ag.cliente?.whatsapp || "",
+                            clienteLocalidade: ag.cliente_localidade || undefined,
+                            subtitulo: ag.proposta_subtitulo || undefined,
+                            objetivo: ag.proposta_objetivo || undefined,
+                            condicoesPagamento: ag.proposta_condicoes_pagamento || undefined,
+                            observacaoCliente: ag.observacao || undefined,
+                            itens: itensDetalhados,
+                            valorTotal: ag.valor_total,
+                          });
+                          if (ok) {
+                            toast.success("Proposta Comercial aberta para salvar em PDF!");
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-white font-semibold bg-[#0e74bc] hover:bg-[#0c63a0] px-3 py-1.5 rounded-lg shadow-sm"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Orçamento PDF</span>
+                      </button>
+
                       <a
                         href={getWhatsAppLink(
-                          config.whatsapp_contato,
-                          `Olá, Gilmar! Tenho um agendamento no dia ${formatDateFriendly(
+                          WHATSAPP_COMERCIAL,
+                          `Olá, Gilmar! Tenho um orçamento/agendamento no dia ${formatDateFriendly(
                             ag.inicio
-                          )} às ${formatTimeSaoPaulo(ag.inicio)}. Gostaria de falar sobre ele.`
+                          )} às ${formatTimeSaoPaulo(ag.inicio)}. Segue em anexo meu orçamento em PDF.`
                         )}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -298,7 +344,7 @@ export function ClientBookingsView({
                         href="/agendar"
                         className="inline-flex items-center gap-1 text-xs text-bg-base font-semibold bg-gold hover:bg-gold-hover px-3 py-1.5 rounded-lg shadow-sm"
                       >
-                        Reagendar
+                        Novo / Reagendar
                       </Link>
                     </div>
                   </div>

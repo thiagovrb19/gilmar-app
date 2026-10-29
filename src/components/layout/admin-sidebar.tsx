@@ -9,6 +9,7 @@ import {
   Users,
   DollarSign,
   Zap,
+  Package,
   Settings,
   ExternalLink,
   LogOut,
@@ -28,6 +29,7 @@ export function AdminSidebar() {
     { label: "Agenda de Serviços", href: "/admin/agenda", icon: CalendarCheck },
     { label: "Clientes", href: "/admin/clientes", icon: Users },
     { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
+    { label: "Controle de Estoque", href: "/admin/estoque", icon: Package },
     { label: "Serviços Elétricos", href: "/admin/servicos", icon: Zap },
     { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
   ];

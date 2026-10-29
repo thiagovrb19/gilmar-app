@@ -18,6 +18,7 @@ import {
   FormaPagamento,
   DiaExcecao,
   DiaExcecaoTipo,
+  EstoquePeca,
 } from "@/lib/supabase/types";
 
 // Helper de validação de permissão com redirecionamento limpo
@@ -1429,6 +1430,302 @@ export async function salvarHorariosFuncionamentoAction(
     return { success: true };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Erro desconhecido ao salvar horários";
+    return { success: false, error: msg };
+  }
+}
+
+/** 18. Controle de Estoque (Baseado na Planilha Gilmar.xlsx) */
+export async function getEstoquePecasAction(): Promise<EstoquePeca[]> {
+  await requireAdmin();
+
+  if (!isSupabaseConfigured()) {
+    const { mockGetEstoquePecas } = await import("@/lib/mock-store");
+    return mockGetEstoquePecas();
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("estoque_pecas")
+      .select("*")
+      .eq("ativo", true)
+      .order("ordem", { ascending: true })
+      .order("nome", { ascending: true });
+
+    if (error) {
+      // Fallback para o store local caso a migration 006 ainda não tenha sido executada no Supabase SQL Editor
+      const { mockGetEstoquePecas } = await import("@/lib/mock-store");
+      return mockGetEstoquePecas();
+    }
+
+    if (!data || data.length === 0) {
+      // Auto-seed inicial com os 44 itens da planilha Gilmar.xlsx caso a tabela esteja vazia
+      const { DEFAULT_ESTOQUE_PECAS } = await import("@/lib/estoque-seed");
+      const inserts = DEFAULT_ESTOQUE_PECAS.map((item) => ({
+        nome: item.nome,
+        categoria: item.categoria,
+        valor_unitario: item.valor_unitario,
+        quantidade: item.quantidade,
+        estoque_minimo: item.estoque_minimo,
+        unidade: item.unidade,
+        observacao: item.observacao,
+        ordem: item.ordem,
+        ativo: true,
+      }));
+      const { data: seeded, error: seedErr } = await supabase
+        .from("estoque_pecas")
+        .insert(inserts)
+        .select("*");
+
+      if (!seedErr && seeded && seeded.length > 0) {
+        return seeded.map((p: any) => ({
+          ...p,
+          valor_unitario: Number(p.valor_unitario || 0),
+          quantidade: Number(p.quantidade || 0),
+          estoque_minimo: Number(p.estoque_minimo ?? 1),
+        })) as EstoquePeca[];
+      }
+
+      const { mockGetEstoquePecas } = await import("@/lib/mock-store");
+      return mockGetEstoquePecas();
+    }
+
+    return data.map((p: any) => ({
+      ...p,
+      valor_unitario: Number(p.valor_unitario || 0),
+      quantidade: Number(p.quantidade || 0),
+      estoque_minimo: Number(p.estoque_minimo ?? 1),
+    })) as EstoquePeca[];
+  } catch {
+    const { mockGetEstoquePecas } = await import("@/lib/mock-store");
+    return mockGetEstoquePecas();
+  }
+}
+
+/** 18.1 Criar ou Editar Peça do Estoque */
+export async function salvarEstoquePecaAction(
+  peca: Partial<EstoquePeca>
+): Promise<{ success: boolean; error?: string; peca?: EstoquePeca }> {
+  try {
+    await requireAdmin();
+
+    if (!isSupabaseConfigured()) {
+      const { mockSalvarEstoquePeca } = await import("@/lib/mock-store");
+      const saved = mockSalvarEstoquePeca(peca);
+      revalidatePath("/admin/estoque");
+      revalidatePath("/admin");
+      return { success: true, peca: saved };
+    }
+
+    const supabase = createAdminClient();
+    const payload = {
+      nome: (peca.nome || "NOVA PEÇA").trim().toUpperCase(),
+      categoria: peca.categoria || "Material Elétrico",
+      valor_unitario: Math.max(0, Number(peca.valor_unitario ?? 0)),
+      quantidade: Math.max(0, Math.round(Number(peca.quantidade ?? 0))),
+      estoque_minimo: Math.max(0, Math.round(Number(peca.estoque_minimo ?? 1))),
+      unidade: peca.unidade || "un",
+      observacao: peca.observacao || null,
+      ativo: peca.ativo ?? true,
+      atualizado_em: new Date().toISOString(),
+    };
+
+    if (peca.id && !peca.id.startsWith("est-")) {
+      const { data, error } = await supabase
+        .from("estoque_pecas")
+        .update(payload)
+        .eq("id", peca.id)
+        .select("*")
+        .maybeSingle();
+
+      if (!error && data) {
+        revalidatePath("/admin/estoque");
+        revalidatePath("/admin");
+        return {
+          success: true,
+          peca: {
+            ...data,
+            valor_unitario: Number(data.valor_unitario || 0),
+            quantidade: Number(data.quantidade || 0),
+          } as EstoquePeca,
+        };
+      }
+    } else if (!peca.id) {
+      const { data, error } = await supabase
+        .from("estoque_pecas")
+        .insert({
+          ...payload,
+          ordem: peca.ordem ?? 99,
+        })
+        .select("*")
+        .single();
+
+      if (!error && data) {
+        revalidatePath("/admin/estoque");
+        revalidatePath("/admin");
+        return {
+          success: true,
+          peca: {
+            ...data,
+            valor_unitario: Number(data.valor_unitario || 0),
+            quantidade: Number(data.quantidade || 0),
+          } as EstoquePeca,
+        };
+      }
+    }
+
+    // Fallback para mock-store caso a tabela ainda não exista no Supabase
+    const { mockSalvarEstoquePeca } = await import("@/lib/mock-store");
+    const saved = mockSalvarEstoquePeca(peca);
+    revalidatePath("/admin/estoque");
+    revalidatePath("/admin");
+    return { success: true, peca: saved };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao salvar peça no estoque";
+    return { success: false, error: msg };
+  }
+}
+
+/** 18.2 Ajuste Rápido de Quantidade em Estoque (+1 / -1 ou valor direto) */
+export async function ajustarQuantidadeEstoqueAction(
+  id: string,
+  novaQuantidade: number
+): Promise<{ success: boolean; error?: string; peca?: EstoquePeca }> {
+  try {
+    await requireAdmin();
+    const qtdFinal = Math.max(0, Math.round(Number(novaQuantidade || 0)));
+
+    if (!isSupabaseConfigured() || id.startsWith("est-") || id.startsWith("peca-")) {
+      const { mockAjustarQuantidadeEstoque } = await import("@/lib/mock-store");
+      const updated = mockAjustarQuantidadeEstoque(id, qtdFinal);
+      revalidatePath("/admin/estoque");
+      revalidatePath("/admin");
+      return updated ? { success: true, peca: updated } : { success: false, error: "Peça não encontrada" };
+    }
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("estoque_pecas")
+      .update({
+        quantidade: qtdFinal,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+
+    if (error || !data) {
+      const { mockAjustarQuantidadeEstoque } = await import("@/lib/mock-store");
+      const updated = mockAjustarQuantidadeEstoque(id, qtdFinal);
+      revalidatePath("/admin/estoque");
+      revalidatePath("/admin");
+      return updated ? { success: true, peca: updated } : { success: false, error: "Peça não encontrada" };
+    }
+
+    revalidatePath("/admin/estoque");
+    revalidatePath("/admin");
+    return {
+      success: true,
+      peca: {
+        ...data,
+        valor_unitario: Number(data.valor_unitario || 0),
+        quantidade: Number(data.quantidade || 0),
+      } as EstoquePeca,
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao ajustar estoque";
+    return { success: false, error: msg };
+  }
+}
+
+/** 18.3 Excluir Peça do Estoque */
+export async function excluirEstoquePecaAction(
+  id: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+
+    if (!isSupabaseConfigured() || id.startsWith("est-")) {
+      const { mockExcluirEstoquePeca } = await import("@/lib/mock-store");
+      mockExcluirEstoquePeca(id);
+      revalidatePath("/admin/estoque");
+      revalidatePath("/admin");
+      return { success: true };
+    }
+
+    const supabase = createAdminClient();
+    const { error } = await supabase.from("estoque_pecas").delete().eq("id", id);
+
+    if (error) {
+      const { mockExcluirEstoquePeca } = await import("@/lib/mock-store");
+      mockExcluirEstoquePeca(id);
+    }
+
+    revalidatePath("/admin/estoque");
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao excluir item do estoque";
+    return { success: false, error: msg };
+  }
+}
+
+/** 18.4 Restaurar Planilha Padrão do Gilmar (44 peças originais) */
+export async function restaurarEstoquePadraoAction(): Promise<{
+  success: boolean;
+  error?: string;
+  pecas?: EstoquePeca[];
+}> {
+  try {
+    await requireAdmin();
+    const { mockRestaurarEstoquePadrao } = await import("@/lib/mock-store");
+    const padrao = mockRestaurarEstoquePadrao();
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = createAdminClient();
+        await supabase.from("estoque_pecas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+        const { DEFAULT_ESTOQUE_PECAS } = await import("@/lib/estoque-seed");
+        const inserts = DEFAULT_ESTOQUE_PECAS.map((item) => ({
+          nome: item.nome,
+          categoria: item.categoria,
+          valor_unitario: item.valor_unitario,
+          quantidade: item.quantidade,
+          estoque_minimo: item.estoque_minimo,
+          unidade: item.unidade,
+          observacao: item.observacao,
+          ordem: item.ordem,
+          ativo: true,
+        }));
+        const { data: seeded } = await supabase
+          .from("estoque_pecas")
+          .insert(inserts)
+          .select("*");
+
+        if (seeded && seeded.length > 0) {
+          revalidatePath("/admin/estoque");
+          revalidatePath("/admin");
+          return {
+            success: true,
+            pecas: seeded.map((p: any) => ({
+              ...p,
+              valor_unitario: Number(p.valor_unitario || 0),
+              quantidade: Number(p.quantidade || 0),
+              estoque_minimo: Number(p.estoque_minimo ?? 1),
+            })) as EstoquePeca[],
+          };
+        }
+      } catch {
+        // Fallback silencioso para o mock-store
+      }
+    }
+
+    revalidatePath("/admin/estoque");
+    revalidatePath("/admin");
+    return { success: true, pecas: padrao };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Erro ao restaurar estoque padrão";
     return { success: false, error: msg };
   }
 }

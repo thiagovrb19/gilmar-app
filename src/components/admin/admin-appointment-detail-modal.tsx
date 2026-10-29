@@ -12,13 +12,16 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Printer,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Agendamento } from "@/lib/supabase/types";
 import { formatCurrency, formatPhone, getWhatsAppLink } from "@/lib/formatters";
 import { formatDateFriendly, formatTimeSaoPaulo } from "@/lib/date/tz";
 import { AdminAttachmentGallery } from "./admin-attachment-gallery";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { numeroDoPedido } from "@/lib/whatsapp";
+import { abrirPropostaPDF } from "@/lib/pdf/proposta-pdf";
 
 interface AdminAppointmentDetailModalProps {
   agendamento: Agendamento | null;
@@ -203,8 +206,53 @@ export function AdminAppointmentDetailModal({
           />
         </div>
 
-        {/* BOTÃO FECHAR */}
-        <div className="flex justify-end pt-2 border-t border-border-subtle">
+        {/* BOTÃO GERAR PDF E FECHAR */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle">
+          <button
+            type="button"
+            onClick={() => {
+              const itensDetalhados =
+                agendamento.proposta_itens_json && agendamento.proposta_itens_json.length > 0
+                  ? agendamento.proposta_itens_json
+                  : (agendamento.servicos || []).map((s, idx) => ({
+                      numero: String(idx + 1).padStart(2, "0"),
+                      identificacao: `Máquina / Ponto ${String(idx + 1).padStart(2, "0")}`,
+                      servicoNome: s.nome,
+                      escopo: `${s.nome} — execução técnica especializada conforme padrão GS Elétrica e Manutenção.`,
+                      descricao:
+                        s.descricao ||
+                        "Fornecimento e instalação técnica especializada com materiais adequados, testes funcionais e acabamento profissional.",
+                      quantidade: 1,
+                      valorUnitario: Number(s.preco || 0),
+                      valorTotal: Number(s.preco || 0),
+                      fotoUrl: null,
+                      icone: s.icone,
+                    }));
+
+              const ok = abrirPropostaPDF({
+                numeroPedido: pedidoNum,
+                clienteNome: agendamento.cliente?.nome || "Cliente",
+                clienteWhatsapp: agendamento.cliente?.whatsapp || "",
+                clienteLocalidade: agendamento.cliente_localidade || undefined,
+                subtitulo: agendamento.proposta_subtitulo || undefined,
+                objetivo: agendamento.proposta_objetivo || undefined,
+                condicoesPagamento: agendamento.proposta_condicoes_pagamento || undefined,
+                observacaoCliente: agendamento.observacao || undefined,
+                itens: itensDetalhados,
+                valorTotal: agendamento.valor_total,
+              });
+              if (ok) {
+                toast.success("Proposta Comercial aberta para impressão / Salvar como PDF!");
+              } else {
+                toast.error("Permita pop-ups no navegador para abrir o PDF.");
+              }
+            }}
+            className="inline-flex items-center gap-1.5 bg-[#0e74bc] hover:bg-[#0c63a0] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shadow-sm"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Gerar Proposta Comercial (PDF)</span>
+          </button>
+
           <button
             type="button"
             onClick={onClose}

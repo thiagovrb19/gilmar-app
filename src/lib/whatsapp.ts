@@ -1,30 +1,41 @@
 /**
  * Integração com o WhatsApp comercial da GS Elétrica e Manutenção.
  * Funções puras para montar a mensagem pré-preenchida enviada ao Gilmar.
+ * Sem emojis ou símbolos especiais que possam gerar caracteres inválidos no WhatsApp.
  */
 import { formatCurrency, getWhatsAppLink } from "@/lib/formatters";
 import { formatDateFriendly, formatTimeSaoPaulo } from "@/lib/date/tz";
 
-/** WhatsApp comercial: (32) 98871-4986 — pode ser sobrescrito por variável de ambiente */
+/** WhatsApp comercial: +55 32 8871-4986 — pode ser sobrescrito por variável de ambiente */
 export const WHATSAPP_COMERCIAL =
-  (process.env.NEXT_PUBLIC_WHATSAPP_COMERCIAL || "32988714986").replace(/\D/g, "");
+  (process.env.NEXT_PUBLIC_WHATSAPP_COMERCIAL || "553288714986").replace(/\D/g, "");
+
+export const WHATSAPP_GILMAR_DISPLAY = "+55 32 8871-4986";
 
 export interface ResumoPedidoItem {
   nome: string;
   quantidade: number;
   valorUnitario: number;
+  identificacao?: string;
+  escopo?: string;
+  temFoto?: boolean;
 }
 
 export interface ResumoPedido {
   id: string;
   numero: string;
   clienteNome: string;
+  clienteLocalidade?: string | null;
   inicio: string | null;
   itens: ResumoPedidoItem[];
   desconto: number;
   valorTotal: number;
   observacao: string | null;
   anexosCount: number;
+  subtitulo?: string | null;
+  objetivo?: string | null;
+  condicoesPagamento?: string | null;
+  pdfGerado?: boolean;
 }
 
 /** Número curto e legível do pedido, derivado do ID (ex: #3F9A1C2B) */
@@ -52,10 +63,16 @@ export function agruparItens(
 
 export function montarMensagemPedido(resumo: ResumoPedido, linkPedido?: string | null): string {
   const linhas: string[] = [];
-  linhas.push("Olá, Gilmar! Acabei de enviar uma solicitação pelo app da GS Elétrica e Manutenção.");
+  linhas.push("*SOLICITACAO DE ORCAMENTO - GS ELETRICA E MANUTENCAO*");
+  linhas.push("Olá, Gilmar! Acabei de gerar minha *Proposta Comercial de Serviços em PDF* pelo sistema.");
   linhas.push("");
-  linhas.push(`*Cliente:* ${resumo.clienteNome}`);
-  linhas.push(`*Pedido:* ${resumo.numero}`);
+
+  const cliLabel = resumo.clienteLocalidade?.trim()
+    ? `${resumo.clienteNome} / ${resumo.clienteLocalidade.trim()}`
+    : resumo.clienteNome;
+
+  linhas.push(`*Cliente:* ${cliLabel}`);
+  linhas.push(`*Proposta / Pedido:* ${resumo.numero}`);
 
   if (resumo.inicio) {
     linhas.push(
@@ -63,28 +80,44 @@ export function montarMensagemPedido(resumo: ResumoPedido, linkPedido?: string |
     );
   }
 
+  if (resumo.subtitulo?.trim()) {
+    linhas.push(`*Tipo de Serviço:* ${resumo.subtitulo.trim()}`);
+  }
+
+  if (resumo.objetivo?.trim()) {
+    linhas.push("");
+    linhas.push(`*Objetivo da Proposta:*`);
+    linhas.push(`${resumo.objetivo.trim()}`);
+  }
+
   if (resumo.itens.length > 0) {
     linhas.push("");
-    linhas.push("*Serviços solicitados:*");
-    for (const item of resumo.itens) {
+    linhas.push("*Escopo dos Serviços Solicitados:*");
+    resumo.itens.forEach((item, idx) => {
       const subtotal = item.quantidade * item.valorUnitario;
+      const numStr = String(idx + 1).padStart(2, "0");
+      const prefixo = item.identificacao ? `${item.identificacao} - ` : "";
       linhas.push(
-        `• ${item.quantidade}x ${item.nome} — ${formatCurrency(item.valorUnitario)}` +
-          (item.quantidade > 1 ? ` (subtotal ${formatCurrency(subtotal)})` : "")
+        `- *${numStr}.* ${prefixo}${item.quantidade}x ${item.nome} - *${formatCurrency(subtotal)}*`
       );
-    }
+    });
   }
 
   if (resumo.desconto > 0) {
     linhas.push(`*Desconto:* ${formatCurrency(resumo.desconto)}`);
   }
-  linhas.push(`*Valor de referência:* ${formatCurrency(resumo.valorTotal)}`);
 
   linhas.push("");
+  linhas.push(`*Valor Total da Proposta:* ${formatCurrency(resumo.valorTotal)}`);
+
+  if (resumo.condicoesPagamento?.trim()) {
+    linhas.push(`*Condições de Pagamento:* ${resumo.condicoesPagamento.trim()}`);
+  }
+
   linhas.push(
     resumo.anexosCount > 0
-      ? `📷 *Imagens anexadas:* ${resumo.anexosCount} foto(s) no pedido.`
-      : "📷 Nenhuma imagem anexada."
+      ? `*Fotos no Orçamento:* ${resumo.anexosCount} item(ns) com foto`
+      : "*Fotos no Orçamento:* SEM FOTO"
   );
 
   if (resumo.observacao?.trim()) {
@@ -92,9 +125,11 @@ export function montarMensagemPedido(resumo: ResumoPedido, linkPedido?: string |
     linhas.push(`*Observações:* ${resumo.observacao.trim()}`);
   }
 
+  linhas.push("");
+  linhas.push("*Estou encaminhando em anexo o arquivo PDF completo do orçamento gerado.*");
+
   if (linkPedido) {
-    linhas.push("");
-    linhas.push(`🔗 Ver pedido no app: ${linkPedido}`);
+    linhas.push(`*Link no sistema:* ${linkPedido}`);
   }
 
   return linhas.join("\n");

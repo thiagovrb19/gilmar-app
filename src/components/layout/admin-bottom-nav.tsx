@@ -10,6 +10,7 @@ import {
   DollarSign,
   MoreHorizontal,
   Zap,
+  Package,
   Settings,
   LogOut,
   X,
@@ -33,6 +34,7 @@ export function AdminBottomNav() {
   ];
 
   const isMoreActive =
+    pathname.startsWith("/admin/estoque") ||
     pathname.startsWith("/admin/servicos") ||
     pathname.startsWith("/admin/configuracoes");
 
@@ -63,6 +65,20 @@ export function AdminBottomNav() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            <Link
+              href="/admin/estoque"
+              onClick={() => setMoreOpen(false)}
+              className="flex items-center gap-3.5 p-3 rounded-xl hover:bg-surface-2 transition-colors text-text-main"
+            >
+              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center text-gold">
+                <Package className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">Controle de Estoque</span>
+                <span className="text-xs text-text-muted">Peças, valores, estoque e receita</span>
+              </div>
+            </Link>
 
             <Link
               href="/admin/servicos"
