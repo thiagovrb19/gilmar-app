@@ -1129,18 +1129,14 @@ export function BookingFlow({
                       <label className="text-[10px] text-text-muted block mb-0.5">
                         Valor Unit. (R$):
                       </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        value={item.valorUnitario}
-                        onChange={(e) =>
-                          handleUpdatePropostaItem(idx, {
-                            valorUnitario: Math.max(0, parseFloat(e.target.value) || 0),
-                          })
-                        }
-                        className="w-full bg-surface-1 border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-main focus:outline-none focus:border-gold"
-                      />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={item.valorUnitario}
+                          readOnly
+                          className="w-full bg-surface-2/60 border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-muted cursor-not-allowed focus:outline-none select-none"
+                        />
                     </div>
                   </div>
 
