@@ -26,10 +26,15 @@ export function getSanitizedSupabaseUrl(): string {
 }
 
 /**
- * Normaliza a chave anônima do Supabase removendo aspas ou espaços acidentais
+ * Normaliza a chave pública/anônima do Supabase removendo aspas ou espaços acidentais.
+ * Suporta tanto o novo formato (NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) quanto o legado (NEXT_PUBLIC_SUPABASE_ANON_KEY).
  */
 export function getSanitizedAnonKey(): string {
-  return (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key")
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "placeholder-anon-key"
+  )
     .trim()
     .replace(/^['"]|['"]$/g, "");
 }
