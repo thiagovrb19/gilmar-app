@@ -18,11 +18,19 @@ import {
   CheckCircle2,
   X,
   PauseCircle,
+  FileText,
+  Printer,
+  Eye,
+  MapPin,
+  Camera,
 } from "lucide-react";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
-import { ClienteEstatistica, Servico } from "@/lib/supabase/types";
+import { Agendamento, ClienteEstatistica, Servico } from "@/lib/supabase/types";
 import { formatCurrency, formatPhone, getWhatsAppLink } from "@/lib/formatters";
-import { formatDateShort } from "@/lib/date/tz";
+import { formatDateShort, formatDateFriendly, formatTimeSaoPaulo } from "@/lib/date/tz";
+import { abrirPropostaPDF } from "@/lib/pdf/proposta-pdf";
+import { numeroDoPedido } from "@/lib/whatsapp";
+import { AdminAppointmentDetailModal } from "./admin-appointment-detail-modal";
 import {
   excluirClienteAction,
   salvarHorarioFixoAction,
@@ -77,6 +85,47 @@ export function AdminClientsView({
     new Date().toISOString().split("T")[0]
   );
   const [isSubmittingFixo, setIsSubmittingFixo] = useState(false);
+  const [detailModalAgendamento, setDetailModalAgendamento] = useState<Agendamento | null>(null);
+
+  const handleGerarPropostaClientePDF = (c: ClienteEstatistica, ag: Agendamento) => {
+    const pedidoNum = numeroDoPedido(ag.id);
+    const itensDetalhados =
+      ag.proposta_itens_json && ag.proposta_itens_json.length > 0
+        ? ag.proposta_itens_json
+        : (ag.servicos || []).map((s, idx) => ({
+            numero: String(idx + 1).padStart(2, "0"),
+            identificacao: `Máquina / Ponto ${String(idx + 1).padStart(2, "0")}`,
+            servicoNome: s.nome,
+            escopo: `${s.nome} — execução técnica especializada conforme padrão GS Elétrica e Manutenção.`,
+            descricao:
+              s.descricao ||
+              "Fornecimento e instalação técnica especializada com materiais adequados, testes funcionais e acabamento profissional.",
+            quantidade: 1,
+            valorUnitario: Number(s.preco || 0),
+            valorTotal: Number(s.preco || 0),
+            fotoUrl: null,
+            icone: s.icone,
+          }));
+
+    const ok = abrirPropostaPDF({
+      numeroPedido: pedidoNum,
+      clienteNome: c.nome || ag.cliente?.nome || "Cliente",
+      clienteWhatsapp: c.whatsapp || ag.cliente?.whatsapp || "",
+      clienteLocalidade: ag.cliente_localidade || undefined,
+      subtitulo: ag.proposta_subtitulo || undefined,
+      objetivo: ag.proposta_objetivo || undefined,
+      condicoesPagamento: ag.proposta_condicoes_pagamento || undefined,
+      observacaoCliente: ag.observacao || undefined,
+      itens: itensDetalhados,
+      valorTotal: ag.valor_total,
+    });
+
+    if (ok) {
+      toast.success("Proposta Comercial de Serviços aberta em PDF!");
+    } else {
+      toast.error("Permita pop-ups no navegador para abrir e baixar o PDF.");
+    }
+  };
 
   const handleOpenRecorrencia = (c: ClienteEstatistica) => {
     setSelectedCliente(c);
@@ -298,98 +347,267 @@ export function AdminClientsView({
 
             const waLink = getWhatsAppLink(c.whatsapp, waMsg);
 
+            const agsDoCliente = c.agendamentos || [];
+
             return (
               <div
                 key={c.id}
-                className="bg-surface-1 border border-border-subtle hover:border-border-gold/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all"
+                className="bg-surface-1 border border-border-subtle hover:border-border-gold/40 rounded-2xl p-4 sm:p-5 space-y-4 transition-all"
               >
-                <div className="flex items-start gap-3.5">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center font-heading font-bold text-sm shrink-0 ${
-                      isTopRank
-                        ? "bg-gold text-bg-base shadow-sm"
-                        : "bg-surface-2 text-gold border border-border-subtle"
-                    }`}
-                  >
-                    {filter === "ranking" ? `#${index + 1}` : c.nome.slice(0, 2).toUpperCase()}
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-heading text-base font-bold text-text-main">
-                        {c.nome}
-                      </span>
-
-                      {isSumido && (
-                        <span className="text-[10px] bg-warning/15 text-warning px-2 py-0.5 rounded-full font-bold">
-                          Sumido ({c.dias_sem_vir}d)
-                        </span>
-                      )}
-
-                      {c.multas_pendentes_qtd > 0 && (
-                        <span className="text-[10px] bg-destructive/15 text-destructive px-2 py-0.5 rounded-full font-bold">
-                          Multa ({formatCurrency(c.multas_pendentes_valor)})
-                        </span>
-                      )}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-heading font-bold text-sm shrink-0 ${
+                        isTopRank
+                          ? "bg-gold text-bg-base shadow-sm"
+                          : "bg-surface-2 text-gold border border-border-subtle"
+                      }`}
+                    >
+                      {filter === "ranking" ? `#${index + 1}` : c.nome.slice(0, 2).toUpperCase()}
                     </div>
 
-                    <p className="text-xs text-text-muted">
-                      {formatPhone(c.whatsapp)}
-                    </p>
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link
+                          href={`/admin/clientes/${c.id}`}
+                          className="font-heading text-base font-bold text-text-main hover:text-gold transition-colors"
+                        >
+                          {c.nome}
+                        </Link>
 
-                    <div className="flex items-center gap-3 text-[11px] text-text-muted pt-1">
-                      <span>
-                        <strong className="text-text-main">{c.visitas}</strong> visita(s)
-                      </span>
-                      <span>&bull;</span>
-                      <span>
-                        Total Gasto: <strong className="text-gold">{formatCurrency(c.total_gasto)}</strong>
-                      </span>
-                      {c.servico_mais_usado && (
-                        <>
-                          <span>&bull;</span>
-                          <span className="text-text-muted truncate max-w-[140px] bg-surface-2 px-1.5 py-0.5 rounded">
-                            {c.servico_mais_usado}
+                        <span className="text-[10px] bg-[#0e74bc]/20 text-[#38bdf8] border border-[#0e74bc]/40 px-2 py-0.5 rounded-full font-bold">
+                          {agsDoCliente.length} {agsDoCliente.length === 1 ? "orçamento/serviço" : "orçamentos/serviços"}
+                        </span>
+
+                        {isSumido && (
+                          <span className="text-[10px] bg-warning/15 text-warning px-2 py-0.5 rounded-full font-bold">
+                            Sumido ({c.dias_sem_vir}d)
                           </span>
-                        </>
-                      )}
+                        )}
+
+                        {c.multas_pendentes_qtd > 0 && (
+                          <span className="text-[10px] bg-destructive/15 text-destructive px-2 py-0.5 rounded-full font-bold">
+                            Multa ({formatCurrency(c.multas_pendentes_valor)})
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-text-muted">
+                        {formatPhone(c.whatsapp)}
+                      </p>
+
+                      <div className="flex items-center gap-3 text-[11px] text-text-muted pt-1 flex-wrap">
+                        <span>
+                          <strong className="text-text-main">{c.visitas}</strong> concluído(s)
+                        </span>
+                        <span>&bull;</span>
+                        <span>
+                          Total Orçado:{" "}
+                          <strong className="text-gold">
+                            {formatCurrency(c.valor_total_orcamentos ?? c.total_gasto)}
+                          </strong>
+                        </span>
+                        {c.total_gasto > 0 && (
+                          <>
+                            <span>&bull;</span>
+                            <span>
+                              Pago/Concluído:{" "}
+                              <strong className="text-success">{formatCurrency(c.total_gasto)}</strong>
+                            </span>
+                          </>
+                        )}
+                        {c.servico_mais_usado && (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-text-muted truncate max-w-[180px] bg-surface-2 px-1.5 py-0.5 rounded">
+                              {c.servico_mais_usado}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Ações Rápidas: Ficha Completa, WhatsApp, Horário Fixo Recorrente, e Excluir */}
+                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle">
+                    <Link
+                      href={`/admin/clientes/${c.id}`}
+                      className="inline-flex items-center gap-1.5 bg-[#0e74bc]/20 hover:bg-[#0e74bc]/30 text-[#38bdf8] border border-[#0e74bc]/40 text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Ficha e Propostas</span>
+                    </Link>
+
+                    <a
+                      href={waLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 bg-success/20 hover:bg-success/30 text-success text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
+                    >
+                      <WhatsAppIcon className="w-4 h-4 fill-current shrink-0" />
+                      <span>WhatsApp</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenRecorrencia(c)}
+                      title={`Configurar horário fixo semanal/mensal para ${c.nome}`}
+                      className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-sm active:scale-95"
+                    >
+                      <Repeat className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Horário Fixo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleExcluirCliente(c.id, c.nome)}
+                      disabled={excluindoId === c.id}
+                      title={`Apagar cliente ${c.nome}`}
+                      className="inline-flex items-center justify-center p-2 rounded-xl bg-surface-2 hover:bg-destructive/20 text-text-muted hover:text-destructive border border-border-subtle transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Ações Rápidas: WhatsApp, Horário Fixo Recorrente, e Excluir */}
-                <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle">
-                  <a
-                    href={waLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 bg-success/20 hover:bg-success/30 text-success text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
-                  >
-                    <WhatsAppIcon className="w-4 h-4 fill-current shrink-0" />
-                    <span>WhatsApp</span>
-                  </a>
+                {/* PROPOSTAS COMERCIAIS DE SERVIÇOS E ORÇAMENTOS SALVOS DESTE CLIENTE */}
+                {agsDoCliente.length > 0 && (
+                  <div className="pt-3 border-t border-border-subtle space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-heading font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Propostas Comerciais de Serviços e Orçamentos Salvos ({agsDoCliente.length})</span>
+                      </span>
+                    </div>
 
-                  {/* NOVO ÍCONE FIXO DE AGENDAMENTO RECORRENTE (Substituto Oficial do botão Ficha) */}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenRecorrencia(c)}
-                    title={`Configurar horário fixo semanal/mensal para ${c.nome}`}
-                    className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 text-xs font-bold px-3 py-2 rounded-xl transition-all shadow-sm active:scale-95"
-                  >
-                    <Repeat className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Horário Fixo</span>
-                  </button>
+                    <div className="space-y-2.5">
+                      {agsDoCliente.map((ag) => {
+                        const pedidoNum = numeroDoPedido(ag.id);
+                        const itensProposta = ag.proposta_itens_json || [];
+                        const fotosItens = itensProposta.filter((it) => Boolean(it.fotoUrl));
 
-                  <button
-                    type="button"
-                    onClick={() => handleExcluirCliente(c.id, c.nome)}
-                    disabled={excluindoId === c.id}
-                    title={`Apagar cliente ${c.nome}`}
-                    className="inline-flex items-center justify-center p-2 rounded-xl bg-surface-2 hover:bg-destructive/20 text-text-muted hover:text-destructive border border-border-subtle transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                        return (
+                          <div
+                            key={ag.id}
+                            className="bg-surface-2/70 border border-border-gold/30 rounded-xl p-3.5 space-y-3 text-xs"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono text-[11px] bg-gold/15 text-gold border border-gold/40 px-2 py-0.5 rounded-full font-bold">
+                                    {pedidoNum}
+                                  </span>
+                                  <span className="font-semibold text-text-main capitalize">
+                                    {formatDateFriendly(ag.inicio)} às {formatTimeSaoPaulo(ag.inicio)}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                      ag.status === "concluido"
+                                        ? "bg-success/15 text-success border border-success/30"
+                                        : ag.status === "cancelado"
+                                        ? "bg-destructive/15 text-destructive border border-destructive/30"
+                                        : "bg-[#0e74bc]/20 text-[#38bdf8] border border-[#0e74bc]/40"
+                                    }`}
+                                  >
+                                    {ag.status}
+                                  </span>
+                                  {ag.cliente_localidade && (
+                                    <span className="text-[11px] text-text-muted flex items-center gap-1">
+                                      <MapPin className="w-3 h-3 text-gold" />
+                                      <span>{ag.cliente_localidade}</span>
+                                    </span>
+                                  )}
+                                  {fotosItens.length > 0 && (
+                                    <span className="text-[10px] bg-gold/15 text-gold border border-gold/40 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                      <Camera className="w-3 h-3" />
+                                      <span>{fotosItens.length} foto(s)</span>
+                                    </span>
+                                  )}
+                                </div>
+
+                                {ag.proposta_subtitulo && (
+                                  <p className="text-text-main font-medium text-xs">
+                                    {ag.proposta_subtitulo}
+                                  </p>
+                                )}
+
+                                {itensProposta.length > 0 ? (
+                                  <p className="text-[11px] text-text-muted">
+                                    {itensProposta
+                                      .map((it) => `${it.identificacao}: ${it.servicoNome} (${it.quantidade}x)`)
+                                      .join(" • ")}
+                                  </p>
+                                ) : (
+                                  ag.servicos &&
+                                  ag.servicos.length > 0 && (
+                                    <p className="text-[11px] text-text-muted">
+                                      {ag.servicos.map((s) => s.nome).join(" • ")}
+                                    </p>
+                                  )
+                                )}
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                <span className="font-heading font-bold text-base text-gold mr-1">
+                                  {formatCurrency(ag.valor_total)}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleGerarPropostaClientePDF(c, ag)}
+                                  className="inline-flex items-center gap-1.5 bg-[#0e74bc] hover:bg-[#0c63a0] text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
+                                  title="Abrir Proposta Comercial de Serviços em PDF para imprimir ou baixar"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                  <span>Gerar / Baixar PDF</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setDetailModalAgendamento({ ...ag, cliente: c })}
+                                  className="inline-flex items-center gap-1.5 bg-surface-1 hover:bg-surface-3 text-text-main border border-border-subtle font-semibold text-xs px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                                >
+                                  <Eye className="w-3.5 h-3.5 text-gold" />
+                                  <span>Detalhes e Fotos</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* MINIATURAS DAS FOTOS DOS ITENS DA PROPOSTA */}
+                            {fotosItens.length > 0 && (
+                              <div className="flex items-center gap-2.5 overflow-x-auto pt-1 pb-0.5">
+                                {fotosItens.map((it, fIdx) => (
+                                  <a
+                                    key={fIdx}
+                                    href={it.fotoUrl || "#"}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 bg-surface-1 border border-border-gold/40 rounded-lg p-1.5 pr-2.5 shrink-0 hover:border-gold transition-colors"
+                                    title="Clique para abrir a foto em tamanho real"
+                                  >
+                                    <img
+                                      src={it.fotoUrl || ""}
+                                      alt={it.identificacao}
+                                      className="w-11 h-11 rounded object-cover border border-border-subtle"
+                                    />
+                                    <div className="text-left">
+                                      <span className="text-[10px] font-bold text-gold block">
+                                        {it.identificacao}
+                                      </span>
+                                      <span className="text-[10px] text-text-muted block max-w-[130px] truncate">
+                                        {it.servicoNome}
+                                      </span>
+                                    </div>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })
@@ -555,6 +773,13 @@ export function AdminClientsView({
           </div>
         </div>
       )}
+
+      {/* MODAL DE DETALHES DA PROPOSTA / AGENDAMENTO */}
+      <AdminAppointmentDetailModal
+        agendamento={detailModalAgendamento}
+        onClose={() => setDetailModalAgendamento(null)}
+        onRefresh={() => router.refresh()}
+      />
     </div>
   );
 }

@@ -43,11 +43,11 @@ export default async function HomePage() {
 
           {/* Nova Logo Oficial Wide (gs-logo) no topo da aplicação */}
           <div className="relative w-full z-10">
-            <div className="relative w-full rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_28px_rgba(0,132,255,0.4)] bg-[#05080f]">
+            <div className="relative w-full rounded-2xl overflow-hidden border-2 border-[#0084ff]/60 shadow-[0_0_28px_rgba(0,132,255,0.4)] leading-none">
               <img
                 src="/brand/gs-logo.jpg?v=2"
                 alt="GS Elétrica e Manutenção Industrial e Residencial - Gilmar Sales"
-                className="w-full h-auto max-h-[260px] sm:max-h-[300px] object-contain mx-auto block"
+                className="w-full h-auto block"
               />
             </div>
           </div>

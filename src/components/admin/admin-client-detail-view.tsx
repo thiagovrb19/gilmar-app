@@ -20,8 +20,13 @@ import {
   Plus,
   X,
   Image as ImageIcon,
+  FileText,
+  Printer,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
+import { abrirPropostaPDF } from "@/lib/pdf/proposta-pdf";
+import { numeroDoPedido } from "@/lib/whatsapp";
 import {
   Cliente,
   ClienteEstatistica,
@@ -478,45 +483,191 @@ export function AdminClientDetailView({
         </div>
       )}
 
-      {/* HISTÓRICO DE ATENDIMENTOS DO CLIENTE */}
-      <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 space-y-4">
-        <h3 className="font-heading text-base font-bold text-text-main">
-          Histórico de Atendimentos
-        </h3>
+      {/* PROPOSTAS COMERCIAIS DE SERVIÇOS, ORÇAMENTOS E HISTÓRICO DO CLIENTE */}
+      <div className="bg-surface-1 border border-border-gold/40 rounded-2xl p-5 space-y-4 shadow-lg">
+        <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-gold" />
+            <div>
+              <h3 className="font-heading text-base font-bold text-text-main">
+                Propostas Comerciais de Serviços e Orçamentos Salvos ({agendamentos.length})
+              </h3>
+              <p className="text-xs text-text-muted">
+                Todos os orçamentos, serviços, fotos e documentos em PDF gerados para {cliente.nome}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {agendamentos.length === 0 ? (
-          <p className="text-xs text-text-muted italic">Nenhum atendimento registrado.</p>
+          <p className="text-xs text-text-muted italic">Nenhum orçamento ou atendimento registrado para este cliente.</p>
         ) : (
-          <div className="space-y-2.5">
-            {agendamentos.map((ag) => (
-              <div
-                key={ag.id}
-                className="bg-surface-2/60 border border-border-subtle rounded-xl p-3 flex justify-between items-center text-xs"
-              >
-                <div>
-                  <span className="font-bold text-text-main block">
-                    {formatDateFriendly(ag.inicio)} às {formatTimeSaoPaulo(ag.inicio)}
-                  </span>
-                  <span className="text-text-muted capitalize">
-                    Status: {ag.status.replace("_", " ")} &bull; {formatCurrency(ag.valor_total)}
-                  </span>
+          <div className="space-y-3.5">
+            {agendamentos.map((ag) => {
+              const pedidoNum = numeroDoPedido(ag.id);
+              const itensProposta = ag.proposta_itens_json || [];
+              const fotosItens = itensProposta.filter((it) => Boolean(it.fotoUrl));
+
+              const handleGerarPDF = () => {
+                const itensDetalhados =
+                  itensProposta.length > 0
+                    ? itensProposta
+                    : (ag.servicos || []).map((s, idx) => ({
+                        numero: String(idx + 1).padStart(2, "0"),
+                        identificacao: `Máquina / Ponto ${String(idx + 1).padStart(2, "0")}`,
+                        servicoNome: s.nome,
+                        escopo: `${s.nome} — execução técnica especializada conforme padrão GS Elétrica e Manutenção.`,
+                        descricao:
+                          s.descricao ||
+                          "Fornecimento e instalação técnica especializada com materiais adequados, testes funcionais e acabamento profissional.",
+                        quantidade: 1,
+                        valorUnitario: Number(s.preco || 0),
+                        valorTotal: Number(s.preco || 0),
+                        fotoUrl: null,
+                        icone: s.icone,
+                      }));
+
+                const ok = abrirPropostaPDF({
+                  numeroPedido: pedidoNum,
+                  clienteNome: cliente.nome || "Cliente",
+                  clienteWhatsapp: cliente.whatsapp || "",
+                  clienteLocalidade: ag.cliente_localidade || undefined,
+                  subtitulo: ag.proposta_subtitulo || undefined,
+                  objetivo: ag.proposta_objetivo || undefined,
+                  condicoesPagamento: ag.proposta_condicoes_pagamento || undefined,
+                  observacaoCliente: ag.observacao || undefined,
+                  itens: itensDetalhados,
+                  valorTotal: ag.valor_total,
+                });
+
+                if (ok) {
+                  toast.success("Proposta Comercial aberta para imprimir ou salvar como PDF!");
+                } else {
+                  toast.error("Permita pop-ups no navegador para abrir o PDF.");
+                }
+              };
+
+              return (
+                <div
+                  key={ag.id}
+                  className="bg-surface-2/70 border border-border-subtle hover:border-border-gold/40 rounded-2xl p-4 space-y-3 text-xs transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs bg-gold/15 text-gold border border-gold/40 px-2.5 py-0.5 rounded-full font-bold">
+                          {pedidoNum}
+                        </span>
+                        <span className="font-bold text-text-main capitalize">
+                          {formatDateFriendly(ag.inicio)} às {formatTimeSaoPaulo(ag.inicio)}
+                        </span>
+                        <span className="text-[10px] bg-surface-1 border border-border-subtle px-2 py-0.5 rounded-full uppercase font-bold text-gold">
+                          {ag.status.replace("_", " ")}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            ag.pago
+                              ? "bg-success/15 text-success"
+                              : "bg-warning/15 text-warning"
+                          }`}
+                        >
+                          {ag.pago ? "Pago" : "Pendente"}
+                        </span>
+                        {ag.cliente_localidade && (
+                          <span className="text-text-muted flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-gold" />
+                            <span>{ag.cliente_localidade}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {ag.proposta_subtitulo && (
+                        <p className="font-semibold text-text-main text-xs">
+                          {ag.proposta_subtitulo}
+                        </p>
+                      )}
+                      {ag.proposta_objetivo && (
+                        <p className="text-[11px] text-text-muted leading-relaxed">
+                          {ag.proposta_objetivo}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <span className="font-heading font-bold text-lg text-gold mr-1">
+                        {formatCurrency(ag.valor_total)}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={handleGerarPDF}
+                        className="inline-flex items-center gap-1.5 bg-[#0e74bc] hover:bg-[#0c63a0] text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Gerar Proposta Comercial (PDF)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDetailModalAg({ ...ag, cliente })}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-1 hover:bg-gold/15 text-gold border border-border-gold/30 text-xs font-semibold transition-colors cursor-pointer"
+                        title="Ver detalhes e fotos anexadas"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        <span>Fotos / Detalhes</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* TABELA RESUMIDA DOS ITENS E FOTOS DA PROPOSTA */}
+                  {itensProposta.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border-subtle/70">
+                      {itensProposta.map((it, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-surface-1 border border-border-subtle rounded-xl p-2.5 flex items-center justify-between gap-2.5"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {it.fotoUrl ? (
+                              <a
+                                href={it.fotoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-12 h-12 rounded-lg overflow-hidden border border-gold/50 shrink-0 block"
+                                title="Clique para ver a foto em tamanho real"
+                              >
+                                <img
+                                  src={it.fotoUrl}
+                                  alt={it.identificacao}
+                                  className="w-full h-full object-cover"
+                                />
+                              </a>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                                <span className="text-[8px] font-extrabold text-red-400 uppercase text-center">
+                                  SEM FOTO
+                                </span>
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <span className="font-bold text-gold block truncate">
+                                #{it.numero} — {it.identificacao}
+                              </span>
+                              <span className="text-[11px] text-text-main block truncate">
+                                {it.servicoNome} ({it.quantidade}x)
+                              </span>
+                            </div>
+                          </div>
+                          <span className="font-heading font-bold text-xs text-gold shrink-0">
+                            {formatCurrency(it.valorTotal)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDetailModalAg(ag)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface-1 hover:bg-gold/15 text-gold border border-border-gold/30 text-[11px] font-semibold transition-colors"
-                    title="Ver detalhes e fotos anexadas"
-                  >
-                    <ImageIcon className="w-3 h-3" />
-                    <span>Fotos / Detalhes</span>
-                  </button>
-                  <span className="text-[11px] text-gold font-semibold">
-                    {ag.pago ? "Pago" : "Pendente"}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

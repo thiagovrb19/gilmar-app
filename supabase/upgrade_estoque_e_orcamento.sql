@@ -14,13 +14,58 @@ SET whatsapp_contato = '553288714986',
     atualizado_em = now()
 WHERE id = 1;
 
--- 2. Adicionar campos da Proposta Comercial Completa na tabela public.agendamentos
+-- 2. Adicionar campos da Proposta Comercial Completa (com fotos e escopo) na tabela public.agendamentos
 ALTER TABLE public.agendamentos
   ADD COLUMN IF NOT EXISTS proposta_subtitulo TEXT,
   ADD COLUMN IF NOT EXISTS proposta_objetivo TEXT,
   ADD COLUMN IF NOT EXISTS proposta_condicoes_pagamento TEXT,
   ADD COLUMN IF NOT EXISTS cliente_localidade TEXT,
   ADD COLUMN IF NOT EXISTS proposta_itens_json JSONB DEFAULT '[]'::jsonb;
+
+-- 2.1. Garantir que a grade de horários de funcionamento do Gilmar esteja ativa (Seg-Sex 07h às 18h, Sáb 07h às 13h)
+INSERT INTO public.horario_funcionamento (dia_semana, abre, fecha, ativo)
+VALUES
+  (0, '08:00:00', '12:00:00', false),
+  (1, '07:00:00', '18:00:00', true),
+  (2, '07:00:00', '18:00:00', true),
+  (3, '07:00:00', '18:00:00', true),
+  (4, '07:00:00', '18:00:00', true),
+  (5, '07:00:00', '18:00:00', true),
+  (6, '07:00:00', '13:00:00', true)
+ON CONFLICT (dia_semana) DO UPDATE SET
+  abre = EXCLUDED.abre,
+  fecha = EXCLUDED.fecha,
+  ativo = EXCLUDED.ativo;
+
+-- 2.2. Atualizar View de Estatísticas de Clientes para incluir Orçamentos e Propostas Geradas
+DROP VIEW IF EXISTS public.v_clientes_estatisticas;
+CREATE OR REPLACE VIEW public.v_clientes_estatisticas AS
+SELECT
+  c.id,
+  c.nome,
+  c.whatsapp,
+  c.data_nascimento,
+  c.user_id,
+  c.observacoes,
+  c.criado_em,
+  COUNT(DISTINCT a.id) FILTER (WHERE a.status = 'concluido')::INT AS visitas,
+  COALESCE(SUM(a.valor_total) FILTER (WHERE a.status = 'concluido'), 0)::NUMERIC(10,2) AS total_gasto,
+  MAX(a.inicio) FILTER (WHERE a.status != 'cancelado') AS ultima_visita,
+  CASE
+    WHEN MAX(a.inicio) FILTER (WHERE a.status != 'cancelado') IS NOT NULL THEN
+      EXTRACT(DAY FROM (now() - MAX(a.inicio) FILTER (WHERE a.status != 'cancelado')))::INT
+    ELSE NULL
+  END AS dias_sem_vir,
+  COUNT(DISTINCT m.id) FILTER (WHERE m.status = 'pendente')::INT AS multas_pendentes_qtd,
+  COALESCE(SUM(m.valor) FILTER (WHERE m.status = 'pendente'), 0)::NUMERIC(10,2) AS multas_pendentes_valor,
+  COUNT(DISTINCT a.id) FILTER (WHERE a.status != 'cancelado')::INT AS total_orcamentos,
+  COALESCE(SUM(a.valor_total) FILTER (WHERE a.status != 'cancelado'), 0)::NUMERIC(10,2) AS valor_total_orcamentos
+FROM public.clientes c
+LEFT JOIN public.agendamentos a ON a.cliente_id = c.id
+LEFT JOIN public.multas m ON m.cliente_id = c.id
+GROUP BY c.id;
+
+GRANT SELECT ON public.v_clientes_estatisticas TO anon, authenticated, service_role;
 
 -- 3. Criar tabela de Controle de Estoque do Admin (Baseada na planilha Gilmar.xlsx)
 CREATE TABLE IF NOT EXISTS public.estoque_pecas (

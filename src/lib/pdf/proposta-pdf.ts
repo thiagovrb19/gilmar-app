@@ -205,23 +205,20 @@ export function gerarHTMLPropostaComercial(dados: DadosPropostaPDF, originUrl: s
       padding: 10mm 14mm 12mm 14mm;
       box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
     }
-    /* Nova Logo GS inteira e sem cortes */
+    /* Nova Logo GS ampliada de ponta a ponta, sem bordas pretas laterais */
     .banner-header {
       width: 100%;
-      background: #05080f;
-      border-radius: 4px;
+      border-radius: 6px;
       overflow: hidden;
-      margin-bottom: 12px;
-      border: 1px solid #1e293b;
-      text-align: center;
+      margin-bottom: 14px;
+      border: 1.5px solid #0e74bc;
+      line-height: 0;
     }
     .banner-header img {
       width: 100%;
       height: auto;
-      max-height: 165px;
-      object-fit: contain;
       display: block;
-      margin: 0 auto;
+      margin: 0;
     }
     .main-title {
       text-align: center;

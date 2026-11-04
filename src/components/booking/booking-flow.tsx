@@ -67,22 +67,21 @@ export function BookingFlow({
   const [selectedSlot, setSelectedSlot] = useState<HorarioSlot | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  // Estado do passo 4: Confirmação, Anexos e Auth
-  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+  // Estado do passo 4: Confirmação e Proposta (Sem necessidade de login/conta)
+  const [acceptedPolicy, setAcceptedPolicy] = useState(true);
   const [observacao, setObservacao] = useState("");
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadStatusText, setUploadStatusText] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentUser, setCurrentUser] = useState(initialUser);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [currentUser] = useState(initialUser);
+  const [savedAgendamentoId, setSavedAgendamentoId] = useState<string | null>(null);
+  const [savedClienteId, setSavedClienteId] = useState<string | null>(initialUser?.clienteId || null);
 
-  // Formulário de Auth rápido embutido caso deslogado
-  const [authMode, setAuthMode] = useState<"login" | "cadastro">("cadastro");
+  // Campos de identificação simples do cliente (sem criar conta ou senha)
   const [authNome, setAuthNome] = useState(initialUser?.nome || "");
   const [authWhats, setAuthWhats] = useState("");
-  const [authNascimento, setAuthNascimento] = useState("");
-  const [authSenha, setAuthSenha] = useState("");
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // Campos completos da Proposta Comercial (Modelo PDF Oficial do Gilmar)
   const [clienteNomeProposta, setClienteNomeProposta] = useState(initialUser?.nome || "");
@@ -261,10 +260,10 @@ export function BookingFlow({
       const dataUrl = ev.target?.result as string;
       if (!dataUrl) return;
 
-      // Redimensiona via canvas para manter o PDF leve e rápido no celular do cliente
+      // Redimensiona via canvas para manter o PDF e o envio para o painel do admin leves e rápidos
       const img = new Image();
       img.onload = () => {
-        const maxDim = 1000;
+        const maxDim = 800;
         let w = img.width;
         let h = img.height;
         if (w > maxDim || h > maxDim) {
@@ -282,7 +281,7 @@ export function BookingFlow({
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(img, 0, 0, w, h);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.78);
           handleUpdatePropostaItem(idx, { fotoUrl: compressedDataUrl });
         } else {
           handleUpdatePropostaItem(idx, { fotoUrl: dataUrl });
@@ -337,6 +336,67 @@ export function BookingFlow({
     };
   };
 
+  // Salva/atualiza automaticamente o orçamento completo (com fotos e itens) no Painel do Admin do Gilmar
+  const syncOrcamentoParaPainelAdmin = async () => {
+    if (!selectedSlot || selectedServices.length === 0) return null;
+
+    const nomeFinal =
+      clienteNomeProposta.trim() ||
+      authNome.trim() ||
+      currentUser?.nome ||
+      "Cliente";
+
+    const serviceIdsToBook = [
+      ...optimization.appliedCombos.map((c) => c.combo.id),
+      ...optimization.residualServices.map((s) => s.id),
+    ];
+
+    setIsSavingDraft(true);
+    try {
+      const res = await criarAgendamentoAction({
+        servicosIds:
+          serviceIdsToBook.length > 0
+            ? serviceIdsToBook
+            : selectedServices.map((s) => s.id),
+        inicio: selectedSlot.inicio,
+        observacao,
+        clienteId: savedClienteId || currentUser?.clienteId,
+        clienteNome: nomeFinal,
+        clienteWhatsapp: authWhats,
+        agendamentoIdExistente: savedAgendamentoId || undefined,
+        propostaSubtitulo,
+        propostaObjetivo,
+        propostaCondicoesPagamento,
+        clienteLocalidade,
+        propostaItensJson: propostaItens.map((it) => ({
+          ...it,
+          fotoUrl: it.fotoUrl || null,
+        })),
+        valorTotalOverride: totalPropostaCalculado,
+      });
+
+      if (res.success && res.agendamento_id) {
+        setSavedAgendamentoId(res.agendamento_id);
+        if (res.cliente_id) {
+          setSavedClienteId(res.cliente_id);
+        }
+        try {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              `proposta_fotos_${res.agendamento_id}`,
+              JSON.stringify(propostaItens.map((i) => i.fotoUrl || null))
+            );
+          }
+        } catch {
+          // ignora limite do sessionStorage
+        }
+      }
+      return res;
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleGerarPDFOrcamento = () => {
     const nomeFinal =
       clienteNomeProposta.trim() || authNome.trim() || currentUser?.nome || "";
@@ -356,7 +416,21 @@ export function BookingFlow({
     }
 
     setPdfGerado(true);
-    toast.success("Proposta Comercial em PDF gerada! Agora você já pode encaminhar para o WhatsApp do Gilmar.");
+
+    // Assim que o cliente gera o PDF, já envia tudo completo (com fotos e proposta) para o Painel do Admin do Gilmar!
+    syncOrcamentoParaPainelAdmin()
+      .then((res) => {
+        if (res?.success) {
+          toast.success(
+            "Proposta Comercial em PDF gerada e já registrada automaticamente no painel do Gilmar!"
+          );
+        } else {
+          toast.success("Proposta Comercial em PDF gerada para download!");
+        }
+      })
+      .catch(() => {
+        toast.success("Proposta Comercial em PDF gerada para download!");
+      });
   };
 
   const getWhatsAppForwardUrl = () => {
@@ -399,25 +473,6 @@ export function BookingFlow({
     }
   };
 
-  // Login rápido durante o fluxo
-  const handleQuickLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAuthLoading(true);
-    const res = await loginCliente(authWhats, authSenha);
-    setIsAuthLoading(false);
-
-    if (!res.success) {
-      toast.error(res.error || "Erro ao conectar.");
-      return;
-    }
-
-    toast.success("Login realizado!");
-    setCurrentUser({ id: res.user!.id, clienteId: res.user!.id });
-    if (selectedSlot && selectedServices.length > 0) {
-      await executeBooking(res.user!.id);
-    }
-  };
-
   const executeBooking = async (targetClienteId?: string) => {
     if (!acceptedPolicy) {
       toast.error("Você precisa concordar com a política de cancelamento.");
@@ -432,6 +487,25 @@ export function BookingFlow({
       return;
     }
 
+    const nomeFinal =
+      clienteNomeProposta.trim() ||
+      authNome.trim() ||
+      currentUser?.nome ||
+      "";
+
+    if (!nomeFinal) {
+      toast.error("Por favor, informe seu Nome ou Empresa no topo do orçamento.");
+      return;
+    }
+
+    // Se o cliente ainda não abriu o PDF, abre automaticamente na hora para ele baixar o documento
+    if (!pdfGerado) {
+      const ok = abrirPropostaPDF(buildDadosPropostaPDF());
+      if (ok) {
+        setPdfGerado(true);
+      }
+    }
+
     setIsSubmitting(true);
     const serviceIdsToBook = [
       ...optimization.appliedCombos.map((c) => c.combo.id),
@@ -442,12 +516,18 @@ export function BookingFlow({
       servicosIds: serviceIdsToBook.length > 0 ? serviceIdsToBook : selectedServices.map((s) => s.id),
       inicio: selectedSlot.inicio,
       observacao,
-      clienteId: targetClienteId || currentUser?.clienteId,
+      clienteId: targetClienteId || savedClienteId || currentUser?.clienteId,
+      clienteNome: nomeFinal,
+      clienteWhatsapp: authWhats,
+      agendamentoIdExistente: savedAgendamentoId || undefined,
       propostaSubtitulo,
       propostaObjetivo,
       propostaCondicoesPagamento,
       clienteLocalidade,
-      propostaItensJson: propostaItens.map(({ fotoUrl, ...rest }) => rest),
+      propostaItensJson: propostaItens.map((it) => ({
+        ...it,
+        fotoUrl: it.fotoUrl || null,
+      })),
       valorTotalOverride: totalPropostaCalculado,
     });
 
@@ -457,8 +537,11 @@ export function BookingFlow({
       return;
     }
 
-    // Mantém as fotos dos itens apenas no navegador/celular do cliente para geração do PDF na tela de sucesso
-    // (não armazena o PDF nem base64 no banco de dados)
+    setSavedAgendamentoId(res.agendamento_id);
+    if (res.cliente_id) {
+      setSavedClienteId(res.cliente_id);
+    }
+
     const qtdFotosItens = propostaItens.filter((i) => Boolean(i.fotoUrl)).length;
     try {
       if (typeof window !== "undefined") {
@@ -475,7 +558,7 @@ export function BookingFlow({
     setUploadProgress(null);
     setUploadStatusText("");
 
-    toast.success("Solicitação confirmada com sucesso!");
+    toast.success("Orçamento e agendamento registrados com sucesso no painel do Gilmar!");
     router.refresh();
     router.push(
       `/agendamento/sucesso?id=${res.agendamento_id}&valor=${res.valor_total}&inicio=${encodeURIComponent(
@@ -484,34 +567,7 @@ export function BookingFlow({
     );
   };
 
-  // Cadastro rápido durante o fluxo
-  const handleQuickCadastro = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!acceptedPolicy) {
-      toast.error("Por favor, aceite os termos da política de cancelamento.");
-      return;
-    }
-    setIsAuthLoading(true);
-    const res = await cadastrarCliente({
-      nome: authNome,
-      whatsappRaw: authWhats,
-      dataNascimento: authNascimento || undefined,
-      senha: authSenha,
-      aceiteLgpd: true,
-    });
-    setIsAuthLoading(false);
-
-    if (!res.success) {
-      toast.error(res.error || "Erro no cadastro.");
-      return;
-    }
-
-    toast.success("Conta criada com sucesso!");
-    setCurrentUser({ id: res.user!.id, nome: authNome, clienteId: res.user!.id });
-    await executeBooking(res.user!.id);
-  };
-
-  // Confirmação final do agendamento
+  // Confirmação direta do agendamento e orçamento (sem necessidade de login ou senha)
   const handleConfirmBooking = async () => {
     await executeBooking();
   };
@@ -974,7 +1030,7 @@ export function BookingFlow({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-xs">
               <div>
                 <label className="text-text-muted font-medium block mb-1">
                   Nome do Cliente / Empresa <span className="text-gold">*</span>
@@ -985,9 +1041,22 @@ export function BookingFlow({
                   value={clienteNomeProposta}
                   onChange={(e) => {
                     setClienteNomeProposta(e.target.value);
-                    if (!authNome) setAuthNome(e.target.value);
+                    setAuthNome(e.target.value);
                   }}
                   placeholder="Ex: Felipe / Empresa"
+                  className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
+                />
+              </div>
+
+              <div>
+                <label className="text-text-muted font-medium block mb-1">
+                  WhatsApp / Telefone (Opcional):
+                </label>
+                <input
+                  type="tel"
+                  value={authWhats}
+                  onChange={(e) => setAuthWhats(formatPhone(e.target.value))}
+                  placeholder="(32) 99999-9999"
                   className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
                 />
               </div>
@@ -1007,7 +1076,7 @@ export function BookingFlow({
                 </div>
               </div>
 
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-3">
                 <label className="text-text-muted font-medium block mb-1">
                   Subtítulo da Proposta Comercial:
                 </label>
@@ -1020,7 +1089,7 @@ export function BookingFlow({
                 />
               </div>
 
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-3">
                 <label className="text-text-muted font-medium block mb-1">
                   Objetivo da Proposta:
                 </label>
@@ -1309,19 +1378,22 @@ export function BookingFlow({
               <div className="bg-success/15 border border-success/40 rounded-xl p-3 text-xs text-success flex items-center gap-2">
                 <Check className="w-4 h-4 shrink-0 stroke-[3]" />
                 <span>
-                  <strong>PDF gerado com sucesso!</strong> Clique no botão verde acima para encaminhar ao Gilmar pelo WhatsApp ({WHATSAPP_GILMAR_DISPLAY}) e confirme abaixo para registrar no sistema.
+                  <strong>PDF gerado e orçamento enviado automaticamente para o painel do Gilmar!</strong>{" "}
+                  {isSavingDraft
+                    ? "Sincronizando dados com o painel..."
+                    : "Você também pode encaminhar pelo botão verde do WhatsApp acima ou finalizar abaixo."}
                 </span>
               </div>
             )}
           </div>
 
-          {/* 6. POLÍTICA DE CANCELAMENTO COM CHECKBOX OBRIGATÓRIO */}
+          {/* 6. POLÍTICA DE CANCELAMENTO */}
           <div className="bg-surface-2/60 border border-border-gold/40 rounded-2xl p-4 space-y-3">
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-gold shrink-0 mt-0.5" />
               <div className="text-xs space-y-1">
                 <h4 className="font-heading text-text-main font-semibold">
-                  Política de Cancelamento e Não Comparecimento
+                  Política de Cancelamento e Atendimento
                 </h4>
                 <p className="text-text-muted leading-relaxed">
                   Cancelamento ou reagendamento gratuito até <strong>{config.horas_cancelamento_gratis} horas antes</strong> do horário marcado. Cancelamentos com menos de 3 horas ou ausência geram multa de <strong>{config.multa_percentual}% ({formatCurrency(totalPropostaCalculado * (config.multa_percentual / 100))})</strong>.
@@ -1342,175 +1414,31 @@ export function BookingFlow({
             </label>
           </div>
 
-          {/* 7. VERIFICAÇÃO DE IDENTIFICAÇÃO DO CLIENTE E REGISTRO NO SISTEMA */}
-          {!currentUser ? (
-            <div className="bg-surface-1 border border-border-subtle rounded-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-                <span className="text-xs text-gold font-semibold">
-                  Identificação Rápida para Salvar no Sistema
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("cadastro")}
-                    className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                      authMode === "cadastro"
-                        ? "bg-gold text-bg-base font-semibold"
-                        : "text-text-muted hover:text-text-main"
-                    }`}
-                  >
-                    Primeira vez
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("login")}
-                    className={`text-xs px-2.5 py-1 rounded-lg transition-colors ${
-                      authMode === "login"
-                        ? "bg-gold text-bg-base font-semibold"
-                        : "text-text-muted hover:text-text-main"
-                    }`}
-                  >
-                    Já sou cliente
-                  </button>
-                </div>
-              </div>
-
-              {authMode === "cadastro" ? (
-                <form onSubmit={handleQuickCadastro} className="space-y-3">
-                  <div>
-                    <label className="text-xs text-text-muted block mb-1">Seu Nome Completo:</label>
-                    <input
-                      type="text"
-                      required
-                      value={authNome}
-                      onChange={(e) => {
-                        setAuthNome(e.target.value);
-                        setClienteNomeProposta(e.target.value);
-                      }}
-                      placeholder="Ex: Felipe / Carlos Eduardo"
-                      className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-text-muted block mb-1">WhatsApp (Telefone):</label>
-                    <input
-                      type="tel"
-                      required
-                      value={authWhats}
-                      onChange={(e) => setAuthWhats(formatPhone(e.target.value))}
-                      placeholder="(32) 99999-9999"
-                      className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-text-muted block mb-1">Crie uma Senha Simples:</label>
-                    <input
-                      type="password"
-                      required
-                      minLength={4}
-                      value={authSenha}
-                      onChange={(e) => setAuthSenha(e.target.value)}
-                      placeholder="Sua senha (ex: 123456)"
-                      className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isAuthLoading || !acceptedPolicy}
-                    className="w-full metallic-gold-btn disabled:opacity-40 font-bold text-sm py-3.5 rounded-xl transition-all shadow-md active:scale-95"
-                  >
-                    {isAuthLoading ? "Salvando orçamento..." : "Cadastrar e Salvar Solicitação de Orçamento"}
-                  </button>
-                </form>
+          {/* 7. CONFIRMAÇÃO DIRETA SEM LOGIN E SEM CRIAR CONTA */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              disabled={isSubmitting || !acceptedPolicy}
+              onClick={handleConfirmBooking}
+              className="w-full metallic-gold-btn disabled:opacity-40 text-bg-base font-bold text-base py-4 rounded-2xl shadow-xl shadow-gold/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isSubmitting ? (
+                <>
+                  <Clock className="w-5 h-5 animate-spin" />
+                  <span>Registrando orçamento e abrindo comprovante...</span>
+                </>
               ) : (
-                <form onSubmit={handleQuickLogin} className="space-y-3">
-                  <div>
-                    <label className="text-xs text-text-muted block mb-1">Seu E-mail, Nome ou WhatsApp:</label>
-                    <input
-                      type="text"
-                      required
-                      value={authWhats}
-                      onChange={(e) => setAuthWhats(e.target.value)}
-                      placeholder="Ex: Carlos, carlos@gmail.com ou 32999999999"
-                      className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-text-muted block mb-1">Sua Senha:</label>
-                    <input
-                      type="password"
-                      required
-                      value={authSenha}
-                      onChange={(e) => setAuthSenha(e.target.value)}
-                      placeholder="Sua senha de acesso"
-                      className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isAuthLoading}
-                    className="w-full metallic-gold-btn disabled:opacity-40 font-bold text-sm py-3.5 rounded-xl transition-all shadow-md active:scale-95"
-                  >
-                    {isAuthLoading ? "Conectando..." : "Entrar e Salvar Orçamento"}
-                  </button>
-                </form>
+                <>
+                  <Check className="w-5 h-5 stroke-[2.5]" />
+                  <span>
+                    {savedAgendamentoId
+                      ? "Finalizar e Ver Comprovante / Baixar PDF"
+                      : "Confirmar Agendamento e Baixar Proposta (PDF)"}
+                  </span>
+                </>
               )}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="bg-surface-1 border border-border-subtle rounded-xl p-3.5 flex items-center justify-between text-xs">
-                <span className="text-text-muted">Conectado como:</span>
-                <span className="font-semibold text-gold">{currentUser.nome || clienteNomeProposta || "Cliente conectado"}</span>
-              </div>
-
-              {/* BARRA DE PROGRESSO DE UPLOAD */}
-              {isSubmitting && uploadProgress !== null && (
-                <div className="bg-surface-2 border border-border-gold/40 rounded-xl p-3.5 space-y-2 animate-in fade-in">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-text-main flex items-center gap-1.5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-gold" />
-                      <span>{uploadStatusText || "Enviando imagens anexadas..."}</span>
-                    </span>
-                    <span className="font-bold text-gold">{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-surface-3 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-gold h-full transition-all duration-200 rounded-full"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="button"
-                disabled={isSubmitting || !acceptedPolicy}
-                onClick={handleConfirmBooking}
-                className="w-full metallic-gold-btn disabled:opacity-40 text-bg-base font-bold text-base py-4 rounded-2xl shadow-xl shadow-gold/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Clock className="w-5 h-5 animate-spin" />
-                    <span>
-                      {uploadProgress !== null
-                        ? `Enviando fotos (${uploadProgress}%)...`
-                        : "Confirmando no sistema..."}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-5 h-5 stroke-[2.5]" />
-                    <span>Confirmar Solicitação de Orçamento</span>
-                  </>
-                )}
-              </button>
-            </div>
-          )}
+            </button>
+          </div>
         </div>
       )}
     </div>

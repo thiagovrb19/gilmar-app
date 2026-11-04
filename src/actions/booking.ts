@@ -180,13 +180,13 @@ const DEFAULT_CONFIG: Configuracao = {
 };
 
 const DEFAULT_HORARIOS: import("@/lib/supabase/types").HorarioFuncionamento[] = [
-  { dia_semana: 0, abre: "09:00:00", fecha: "18:00:00", ativo: false }, // Domingo fechado
-  { dia_semana: 1, abre: "17:00:00", fecha: "21:00:00", ativo: true },  // Segunda
-  { dia_semana: 2, abre: "17:00:00", fecha: "21:00:00", ativo: true },  // Terça
-  { dia_semana: 3, abre: "17:00:00", fecha: "21:00:00", ativo: true },  // Quarta
-  { dia_semana: 4, abre: "17:00:00", fecha: "21:00:00", ativo: true },  // Quinta
-  { dia_semana: 5, abre: "17:00:00", fecha: "21:00:00", ativo: true },  // Sexta
-  { dia_semana: 6, abre: "12:00:00", fecha: "18:00:00", ativo: true },  // Sábado (12:00 às 18:00)
+  { dia_semana: 0, abre: "08:00:00", fecha: "12:00:00", ativo: false }, // Domingo fechado
+  { dia_semana: 1, abre: "07:00:00", fecha: "18:00:00", ativo: true },  // Segunda (07h às 18h)
+  { dia_semana: 2, abre: "07:00:00", fecha: "18:00:00", ativo: true },  // Terça (07h às 18h)
+  { dia_semana: 3, abre: "07:00:00", fecha: "18:00:00", ativo: true },  // Quarta (07h às 18h)
+  { dia_semana: 4, abre: "07:00:00", fecha: "18:00:00", ativo: true },  // Quinta (07h às 18h)
+  { dia_semana: 5, abre: "07:00:00", fecha: "18:00:00", ativo: true },  // Sexta (07h às 18h)
+  { dia_semana: 6, abre: "07:00:00", fecha: "13:00:00", ativo: true },  // Sábado (07h às 13h)
 ];
 
 /** Busca serviços ativos e combos ordenados */
@@ -342,7 +342,7 @@ export async function getHorariosDisponiveis(dataStr: string): Promise<HorarioSl
       }
     }
 
-    // Se não há exceção personalizada, usa a grade padrão da semana
+    // Se não há exceção personalizada, usa a grade padrão da semana (07:00 às 18:00 Seg-Sex, 07:00 às 13:00 Sáb)
     if (horas.length === 0 && !excecao) {
       if (dayOfWeek === 0) {
         // Domingo fechado por padrão
@@ -350,8 +350,8 @@ export async function getHorariosDisponiveis(dataStr: string): Promise<HorarioSl
       }
       horas =
         dayOfWeek === 6
-          ? ["12:00", "13:00", "14:00", "15:00", "16:00", "17:00"]
-          : ["17:00", "18:00", "19:00", "20:00"];
+          ? gerarHorasEntre("07:00", "13:00")
+          : gerarHorasEntre("07:00", "18:00");
     }
 
     const horasOcupadas = mockGetHorasOcupadas(cleanDate);
@@ -392,7 +392,7 @@ export async function getHorariosDisponiveis(dataStr: string): Promise<HorarioSl
     p_data: cleanDate,
   });
 
-  if (error || !data) {
+  if (error || !data || (Array.isArray(data) && data.length === 0)) {
     let horas: string[] = [];
 
     if (excecaoDb?.tipo === "personalizado") {
@@ -407,8 +407,8 @@ export async function getHorariosDisponiveis(dataStr: string): Promise<HorarioSl
       if (dayOfWeek === 0) return [];
       horas =
         dayOfWeek === 6
-          ? ["12:00", "13:00", "14:00", "15:00", "16:00", "17:00"]
-          : ["17:00", "18:00", "19:00", "20:00"];
+          ? gerarHorasEntre("07:00", "13:00")
+          : gerarHorasEntre("07:00", "18:00");
     }
 
     // Consulta agendamentos, fixos e bloqueios do dia
@@ -484,12 +484,15 @@ function isValidUuid(id?: string | null): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
-/** Criação de agendamento validado no servidor */
+/** Criação ou atualização de orçamento/agendamento sem necessidade de login */
 export async function criarAgendamentoAction(params: {
   servicosIds: string[];
   inicio: string;
   observacao?: string;
   clienteId?: string;
+  clienteNome?: string;
+  clienteWhatsapp?: string;
+  agendamentoIdExistente?: string;
   propostaSubtitulo?: string;
   propostaObjetivo?: string;
   propostaCondicoesPagamento?: string;
@@ -499,28 +502,30 @@ export async function criarAgendamentoAction(params: {
 }): Promise<{
   success: boolean;
   agendamento_id?: string;
+  cliente_id?: string;
   valor_total?: number;
   desconto?: number;
   error?: string;
 }> {
   try {
     let finalClienteId = params.clienteId;
+    const nomeInformado = (params.clienteNome || "").trim();
+    const whatsappInformado = (params.clienteWhatsapp || "").replace(/\D/g, "");
 
     if (!finalClienteId) {
       const user = await getCurrentUser();
-      if (!user?.clienteId) {
-        return {
-          success: false,
-          error: "Você precisa estar conectado para confirmar o agendamento.",
-        };
+      if (user?.clienteId) {
+        finalClienteId = user.clienteId;
       }
-      finalClienteId = user.clienteId;
     }
 
     if (!isSupabaseConfigured()) {
       const { mockCriarAgendamento } = await import("@/lib/mock-store");
       const res = mockCriarAgendamento({
-        clienteId: finalClienteId!,
+        clienteId: finalClienteId,
+        clienteNome: nomeInformado || undefined,
+        clienteWhatsapp: whatsappInformado || undefined,
+        agendamentoIdExistente: params.agendamentoIdExistente,
         servicosIds: params.servicosIds,
         inicio: params.inicio,
         observacao: params.observacao,
@@ -532,14 +537,40 @@ export async function criarAgendamentoAction(params: {
         propostaItensJson: params.propostaItensJson,
         valorTotalOverride: params.valorTotalOverride,
       });
+
+      try {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        cookieStore.set(
+          "barbearia_cliente_session",
+          JSON.stringify({
+            id: res.agendamento.cliente_id,
+            nome: res.agendamento.cliente?.nome || nomeInformado || "Cliente",
+            whatsapp: res.agendamento.cliente?.whatsapp || whatsappInformado || "",
+            data_nascimento: null,
+          }),
+          {
+            httpOnly: true,
+            path: "/",
+            maxAge: 60 * 60 * 24 * 365,
+            sameSite: "lax",
+          }
+        );
+      } catch {
+        // Ignora erro de cookie em contextos não suportados
+      }
+
       revalidatePath("/admin/agenda");
       revalidatePath("/admin");
+      revalidatePath("/admin/clientes");
+      revalidatePath("/admin/financeiro");
       revalidatePath("/meus-agendamentos");
       revalidatePath("/agendar");
 
       return {
         success: true,
         agendamento_id: res.agendamento.id,
+        cliente_id: res.agendamento.cliente_id,
         valor_total: res.agendamento.valor_total,
       };
     }
@@ -547,30 +578,36 @@ export async function criarAgendamentoAction(params: {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     const adminSupabase = createAdminClient();
 
-    // 1. Resolve o ID real do cliente na tabela public.clientes (caso venha o user_id do auth)
+    // 1. Resolve o ID real do cliente na tabela public.clientes (sem exigir login)
     let clienteIdReal: string | null = null;
+    let clienteNomeFinal = nomeInformado || "Cliente";
+    let clienteWhatsappFinal = whatsappInformado;
 
     if (finalClienteId && isValidUuid(finalClienteId)) {
       try {
         // 1.1 Tenta achar cliente por id direto
         const { data: cById } = await adminSupabase
           .from("clientes")
-          .select("id")
+          .select("id, nome, whatsapp")
           .eq("id", finalClienteId)
           .maybeSingle();
 
         if (cById?.id) {
           clienteIdReal = cById.id;
+          if (!nomeInformado && cById.nome) clienteNomeFinal = cById.nome;
+          if (!whatsappInformado && cById.whatsapp) clienteWhatsappFinal = cById.whatsapp;
         } else {
           // 1.2 Tenta achar cliente por user_id (caso finalClienteId seja o id do auth.users)
           const { data: cByUser } = await adminSupabase
             .from("clientes")
-            .select("id")
+            .select("id, nome, whatsapp")
             .eq("user_id", finalClienteId)
             .maybeSingle();
 
           if (cByUser?.id) {
             clienteIdReal = cByUser.id;
+            if (!nomeInformado && cByUser.nome) clienteNomeFinal = cByUser.nome;
+            if (!whatsappInformado && cByUser.whatsapp) clienteWhatsappFinal = cByUser.whatsapp;
           } else {
             // 1.3 Tenta achar por profiles
             const { data: pRow } = await adminSupabase
@@ -585,22 +622,25 @@ export async function criarAgendamentoAction(params: {
           }
         }
       } catch {
-        // continua para busca por telefone
+        // continua para busca por telefone/nome
       }
     }
 
-    // 1.4 Se não achou por UUID (ou se finalClienteId era inválido), busca por telefone ou cadastra novo
+    // 1.4 Se não achou por UUID, busca pelo WhatsApp ou Nome informado no orçamento, ou cadastra automaticamente
     if (!clienteIdReal) {
       const user = await getCurrentUser();
-      const userPhone = user?.cliente?.whatsapp;
-      const userName = user?.cliente?.nome || "Cliente";
+      const userPhone = whatsappInformado || user?.cliente?.whatsapp || "";
+      const userName = nomeInformado || user?.cliente?.nome || "Cliente";
+      clienteNomeFinal = userName;
+      clienteWhatsappFinal = userPhone;
 
-      if (userPhone) {
+      if (userPhone && userPhone.replace(/\D/g, "").length >= 8) {
         const cleanPhone = userPhone.replace(/\D/g, "");
         const { data: cByPhone } = await adminSupabase
           .from("clientes")
-          .select("id")
-          .or(`whatsapp.eq.${userPhone},whatsapp.ilike.%${cleanPhone.slice(-8)}%`)
+          .select("id, nome, whatsapp")
+          .or(`whatsapp.eq.${cleanPhone},whatsapp.ilike.%${cleanPhone.slice(-8)}%`)
+          .limit(1)
           .maybeSingle();
 
         if (cByPhone?.id) {
@@ -608,35 +648,178 @@ export async function criarAgendamentoAction(params: {
         }
       }
 
+      // Se não informou telefone mas informou nome, tenta encontrar cliente existente com mesmo nome
+      if (!clienteIdReal && nomeInformado.length >= 3) {
+        const { data: cByName } = await adminSupabase
+          .from("clientes")
+          .select("id, nome, whatsapp")
+          .ilike("nome", nomeInformado)
+          .limit(1)
+          .maybeSingle();
+
+        if (cByName?.id) {
+          clienteIdReal = cByName.id;
+          if (!clienteWhatsappFinal && cByName.whatsapp) {
+            clienteWhatsappFinal = cByName.whatsapp;
+          }
+        }
+      }
+
       if (!clienteIdReal) {
-        const { data: newCli } = await adminSupabase
+        // Gera um telefone único caso o cliente não tenha preenchido o WhatsApp (para respeitar UNIQUE(whatsapp))
+        const safeWhatsapp =
+          userPhone && userPhone.replace(/\D/g, "").length >= 8
+            ? userPhone.replace(/\D/g, "")
+            : "329" + Math.floor(10000000 + Math.random() * 89999999).toString();
+
+        const { data: newCli, error: newCliErr } = await adminSupabase
           .from("clientes")
           .insert({
             nome: userName,
-            whatsapp: userPhone || "32999999999",
+            whatsapp: safeWhatsapp,
             data_nascimento: user?.cliente?.data_nascimento || null,
+            observacoes: params.clienteLocalidade ? `Localidade: ${params.clienteLocalidade}` : null,
           })
-          .select("id")
+          .select("id, nome, whatsapp")
           .single();
 
         if (newCli?.id) {
           clienteIdReal = newCli.id;
+          clienteWhatsappFinal = newCli.whatsapp;
+        } else if (newCliErr) {
+          // Caso tenha dado conflito no whatsapp por coincidência, tenta inserir com sufixo único
+          const retryWhatsapp = "329" + Date.now().toString().slice(-8);
+          const { data: retryCli } = await adminSupabase
+            .from("clientes")
+            .insert({
+              nome: userName,
+              whatsapp: retryWhatsapp,
+              observacoes: params.clienteLocalidade ? `Localidade: ${params.clienteLocalidade}` : null,
+            })
+            .select("id, nome, whatsapp")
+            .single();
+          if (retryCli?.id) {
+            clienteIdReal = retryCli.id;
+            clienteWhatsappFinal = retryCli.whatsapp;
+          }
         }
+      }
+    }
+
+    // Se o cliente já existia e o usuário digitou Nome ou WhatsApp no orçamento, atualiza os dados do cliente
+    if (clienteIdReal && isValidUuid(clienteIdReal)) {
+      const updateCliPayload: Record<string, string> = {};
+      if (nomeInformado && nomeInformado.length >= 2) {
+        updateCliPayload.nome = nomeInformado;
+      }
+      if (whatsappInformado && whatsappInformado.length >= 8) {
+        updateCliPayload.whatsapp = whatsappInformado;
+      }
+      if (Object.keys(updateCliPayload).length > 0) {
+        try {
+          await adminSupabase
+            .from("clientes")
+            .update(updateCliPayload)
+            .eq("id", clienteIdReal);
+        } catch {
+          // Ignora se whatsapp colidir com outro registro
+        }
+      }
+
+      // Salva cookie de sessão silenciosa para que o cliente veja seus orçamentos sem precisar de login
+      try {
+        const { cookies } = await import("next/headers");
+        const cookieStore = await cookies();
+        cookieStore.set(
+          "barbearia_cliente_session",
+          JSON.stringify({
+            id: clienteIdReal,
+            nome: clienteNomeFinal || "Cliente",
+            whatsapp: clienteWhatsappFinal || "",
+            data_nascimento: null,
+          }),
+          {
+            httpOnly: true,
+            path: "/",
+            maxAge: 60 * 60 * 24 * 365,
+            sameSite: "lax",
+          }
+        );
+      } catch {
+        // Ignora erro de cookie se chamado fora de Server Action
       }
     }
 
     if (!clienteIdReal || !isValidUuid(clienteIdReal)) {
       return {
         success: false,
-        error: "Não foi possível identificar sua conta de cliente. Por favor, entre novamente no aplicativo.",
+        error: "Não foi possível registrar os dados do cliente para o orçamento.",
       };
     }
 
-    // 2. Validação estrita de conflito no servidor antes de confirmar
     const duracaoMin = 60;
     const inicioDate = new Date(params.inicio);
     const fimDate = new Date(inicioDate.getTime() + duracaoMin * 60000);
 
+    // Se já existe um agendamento salvo nesta mesma sessão (ex: cliente clicou em Gerar PDF e depois Confirmar), atualiza-o!
+    if (params.agendamentoIdExistente && isValidUuid(params.agendamentoIdExistente)) {
+      const { data: agExistente } = await adminSupabase
+        .from("agendamentos")
+        .select("id, valor_total")
+        .eq("id", params.agendamentoIdExistente)
+        .maybeSingle();
+
+      if (agExistente?.id) {
+        const valorTotalUpd =
+          params.valorTotalOverride && params.valorTotalOverride > 0
+            ? params.valorTotalOverride
+            : Number(agExistente.valor_total || 0);
+
+        await adminSupabase
+          .from("agendamentos")
+          .update({
+            cliente_id: clienteIdReal,
+            inicio: params.inicio,
+            fim: fimDate.toISOString(),
+            valor_total: valorTotalUpd,
+            observacao: params.observacao || null,
+          })
+          .eq("id", agExistente.id);
+
+        try {
+          await adminSupabase
+            .from("agendamentos")
+            .update({
+              proposta_subtitulo: params.propostaSubtitulo || null,
+              proposta_objetivo: params.propostaObjetivo || null,
+              proposta_condicoes_pagamento: params.propostaCondicoesPagamento || null,
+              cliente_localidade: params.clienteLocalidade || null,
+              proposta_itens_json: params.propostaItensJson || null,
+            })
+            .eq("id", agExistente.id);
+        } catch {
+          // Colunas opcionais ainda não criadas
+        }
+
+        revalidatePath("/admin/agenda");
+        revalidatePath("/admin");
+        revalidatePath("/admin/financeiro");
+        revalidatePath("/admin/clientes");
+        revalidatePath(`/admin/clientes/${clienteIdReal}`);
+        revalidatePath("/meus-agendamentos");
+        revalidatePath("/agendar");
+
+        return {
+          success: true,
+          agendamento_id: agExistente.id,
+          cliente_id: clienteIdReal,
+          valor_total: valorTotalUpd,
+          desconto: 0,
+        };
+      }
+    }
+
+    // 2. Validação estrita de conflito no servidor antes de confirmar
     const { data: conflitoAg } = await adminSupabase
       .from("agendamentos")
       .select("id")
@@ -662,7 +845,7 @@ export async function criarAgendamentoAction(params: {
     if (conflitoBlq) {
       return {
         success: false,
-        error: `Este horário está bloqueado pelo barbeiro (${conflitoBlq.motivo || "Indisponível"}).`,
+        error: `Este horário está bloqueado pelo Gilmar (${conflitoBlq.motivo || "Indisponível"}).`,
       };
     }
 
@@ -700,6 +883,7 @@ export async function criarAgendamentoAction(params: {
       revalidatePath("/admin");
       revalidatePath("/admin/financeiro");
       revalidatePath("/admin/clientes");
+      revalidatePath(`/admin/clientes/${clienteIdReal}`);
       revalidatePath("/meus-agendamentos");
       revalidatePath("/agendar");
 
@@ -711,6 +895,7 @@ export async function criarAgendamentoAction(params: {
           desconto?: number;
           error?: string;
         }),
+        cliente_id: clienteIdReal,
         valor_total:
           params.valorTotalOverride && params.valorTotalOverride > 0
             ? params.valorTotalOverride
@@ -782,12 +967,14 @@ export async function criarAgendamentoAction(params: {
     revalidatePath("/admin");
     revalidatePath("/admin/financeiro");
     revalidatePath("/admin/clientes");
+    revalidatePath(`/admin/clientes/${clienteIdReal}`);
     revalidatePath("/meus-agendamentos");
     revalidatePath("/agendar");
 
     return {
       success: true,
       agendamento_id: novoAg.id,
+      cliente_id: clienteIdReal,
       valor_total: valorTotal > 0 ? valorTotal : 25,
       desconto: 0,
     };

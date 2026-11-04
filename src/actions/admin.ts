@@ -889,7 +889,7 @@ export async function cancelarAgendamentoAdminAction(id: string, motivo?: string
   return { success: true };
 }
 
-/** 9. Clientes com estatísticas consolidadas */
+/** 9. Clientes com estatísticas consolidadas e todas as propostas comerciais / orçamentos salvos */
 export async function getClientesStats() {
   await requireAdmin();
 
@@ -900,53 +900,78 @@ export async function getClientesStats() {
 
   const supabase = createAdminClient();
 
-  // Consulta view consolidada
-  const { data: statsRaw } = await supabase
-    .from("v_clientes_estatisticas")
-    .select("*")
-    .order("visitas", { ascending: false });
+  const [clisRes, agsRes, multasRes] = await Promise.all([
+    supabase.from("clientes").select("*").order("criado_em", { ascending: false }),
+    supabase
+      .from("agendamentos")
+      .select("*, agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
+      .order("inicio", { ascending: false }),
+    supabase.from("multas").select("*").eq("status", "pendente"),
+  ]);
 
-  // Fallback garantido se a view retornar vazio
-  if (!statsRaw || statsRaw.length === 0) {
-    const { data: clis } = await supabase
-      .from("clientes")
-      .select("*, agendamentos(*, agendamento_servicos(preco_cobrado, servicos(nome, preco)))")
-      .order("criado_em", { ascending: false });
+  const clis = clisRes.data || [];
+  const allAgs = (agsRes.data || []).map(mapServicosEPreco);
+  const allMultas = multasRes.data || [];
 
-    return (clis || []).map((c: any) => {
-      const agsConcluidos = (c.agendamentos || []).filter((a: any) => a.status === "concluido");
-      const totalGasto = agsConcluidos.reduce(
-        (acc: number, a: any) => acc + Number(a.valor_total || 0),
-        0
-      );
-      const ultVisita = agsConcluidos.length > 0 ? agsConcluidos[0].inicio : null;
-      const diasSemVir = ultVisita
-        ? Math.floor((Date.now() - new Date(ultVisita).getTime()) / (1000 * 60 * 60 * 24))
+  return clis.map((c: any) => {
+    const agsDoCliente = allAgs
+      .filter((a: any) => a.cliente_id === c.id)
+      .map((a: any) => ({ ...a, cliente: c }))
+      .sort((a: any, b: any) => (a.inicio < b.inicio ? 1 : -1));
+
+    const agsConcluidos = agsDoCliente.filter((a: any) => a.status === "concluido");
+    const agsAtivosOuConcluidos = agsDoCliente.filter((a: any) => a.status !== "cancelado");
+
+    const totalGasto = agsConcluidos.reduce(
+      (acc: number, a: any) => acc + Number(a.valor_total || 0),
+      0
+    );
+    const valorTotalOrcamentos = agsAtivosOuConcluidos.reduce(
+      (acc: number, a: any) => acc + Number(a.valor_total || 0),
+      0
+    );
+
+    const ultVisita =
+      agsConcluidos.length > 0
+        ? agsConcluidos[0].inicio
+        : agsAtivosOuConcluidos.length > 0
+        ? agsAtivosOuConcluidos[0].inicio
         : null;
 
-      const servicoMaisUsado =
-        c.agendamentos?.[0]?.agendamento_servicos?.[0]?.servicos?.nome || null;
+    const diasSemVir = ultVisita
+      ? Math.floor((Date.now() - new Date(ultVisita).getTime()) / (1000 * 60 * 60 * 24))
+      : null;
 
-      return {
-        id: c.id,
-        nome: c.nome,
-        whatsapp: c.whatsapp,
-        data_nascimento: c.data_nascimento,
-        user_id: c.user_id,
-        observacoes: c.observacoes,
-        criado_em: c.criado_em,
-        visitas: agsConcluidos.length,
-        total_gasto: totalGasto,
-        ultima_visita: ultVisita,
-        dias_sem_vir: diasSemVir,
-        multas_pendentes_qtd: 0,
-        multas_pendentes_valor: 0,
-        servico_mais_usado: servicoMaisUsado,
-      } as ClienteEstatistica;
-    });
-  }
+    const servicoMaisUsado =
+      agsDoCliente[0]?.servicos?.[0]?.nome ||
+      agsDoCliente[0]?.proposta_itens_json?.[0]?.servicoNome ||
+      null;
 
-  return (statsRaw || []) as ClienteEstatistica[];
+    const multasCliente = allMultas.filter((m: any) => m.cliente_id === c.id);
+
+    return {
+      id: c.id,
+      nome: c.nome,
+      whatsapp: c.whatsapp,
+      data_nascimento: c.data_nascimento,
+      user_id: c.user_id,
+      observacoes: c.observacoes,
+      criado_em: c.criado_em,
+      visitas: agsConcluidos.length,
+      total_gasto: totalGasto,
+      ultima_visita: ultVisita,
+      dias_sem_vir: diasSemVir,
+      multas_pendentes_qtd: multasCliente.length,
+      multas_pendentes_valor: multasCliente.reduce(
+        (acc: number, m: any) => acc + Number(m.valor || 0),
+        0
+      ),
+      servico_mais_usado: servicoMaisUsado,
+      total_orcamentos: agsAtivosOuConcluidos.length,
+      valor_total_orcamentos: valorTotalOrcamentos,
+      agendamentos: agsDoCliente,
+    } as ClienteEstatistica;
+  });
 }
 
 /** 10. Ficha detalhada do cliente */

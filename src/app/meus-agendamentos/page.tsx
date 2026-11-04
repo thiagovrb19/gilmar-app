@@ -19,12 +19,6 @@ export const metadata = {
 };
 
 export default async function MeusAgendamentosPage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
   const [bookings, multas, config] = await Promise.all([
     getMeusAgendamentos(),
     getMinhasMultas(),

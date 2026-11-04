@@ -165,24 +165,123 @@ export function AdminAppointmentDetailModal({
           </div>
         </div>
 
-        {/* SERVIÇOS SELECIONADOS */}
-        {agendamento.servicos && agendamento.servicos.length > 0 && (
+        {/* SERVIÇOS E ITENS DA PROPOSTA COMERCIAL */}
+        {(agendamento.proposta_subtitulo ||
+          agendamento.proposta_objetivo ||
+          agendamento.cliente_localidade ||
+          agendamento.proposta_condicoes_pagamento) && (
+          <div className="bg-surface-2/60 border border-[#0e74bc]/40 rounded-2xl p-4 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-2">
+              <span className="font-heading font-bold text-[#38bdf8] uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span>Dados da Proposta Comercial de Serviços</span>
+              </span>
+              {agendamento.cliente_localidade && (
+                <span className="text-[11px] font-semibold text-gold">
+                  📍 {agendamento.cliente_localidade}
+                </span>
+              )}
+            </div>
+
+            {agendamento.proposta_subtitulo && (
+              <div>
+                <span className="text-[10px] text-text-muted uppercase font-bold block">Subtítulo:</span>
+                <p className="text-text-main font-medium">{agendamento.proposta_subtitulo}</p>
+              </div>
+            )}
+
+            {agendamento.proposta_objetivo && (
+              <div>
+                <span className="text-[10px] text-text-muted uppercase font-bold block">Objetivo:</span>
+                <p className="text-text-main leading-relaxed">{agendamento.proposta_objetivo}</p>
+              </div>
+            )}
+
+            {agendamento.proposta_condicoes_pagamento && (
+              <div>
+                <span className="text-[10px] text-text-muted uppercase font-bold block">Condições de Pagamento:</span>
+                <p className="text-gold font-medium">{agendamento.proposta_condicoes_pagamento}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {agendamento.proposta_itens_json && agendamento.proposta_itens_json.length > 0 ? (
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Serviços Selecionados
+              Escopo Detalhado da Proposta ({agendamento.proposta_itens_json.length} {agendamento.proposta_itens_json.length === 1 ? "item" : "itens"})
             </h4>
-            <div className="space-y-1.5">
-              {agendamento.servicos.map((s) => (
+            <div className="space-y-2">
+              {agendamento.proposta_itens_json.map((item, idx) => (
                 <div
-                  key={s.id}
-                  className="bg-surface-2/60 border border-border-subtle rounded-xl p-2.5 flex items-center justify-between text-xs"
+                  key={idx}
+                  className="bg-surface-2/60 border border-border-subtle rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                 >
-                  <span className="text-text-main font-medium">{s.nome}</span>
-                  <span className="text-gold font-semibold">{formatCurrency(s.preco)}</span>
+                  <div className="flex items-start gap-3">
+                    {item.fotoUrl ? (
+                      <a
+                        href={item.fotoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-16 h-16 rounded-lg overflow-hidden border border-gold/50 bg-bg-base shrink-0 block"
+                        title="Clique para ampliar a foto do item"
+                      >
+                        <img
+                          src={item.fotoUrl}
+                          alt={item.identificacao}
+                          className="w-full h-full object-cover"
+                        />
+                      </a>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                        <span className="text-[9px] font-extrabold text-red-400 uppercase text-center px-1">
+                          SEM FOTO
+                        </span>
+                      </div>
+                    )}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="bg-[#0e74bc] text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          #{item.numero || String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <span className="font-bold text-gold">{item.identificacao}</span>
+                        <span className="text-text-main font-semibold">— {item.servicoNome}</span>
+                      </div>
+                      <p className="text-text-muted text-[11px] leading-snug">{item.escopo}</p>
+                      <span className="text-[10px] text-text-muted block">
+                        Qtd: <strong>{item.quantidade}</strong> &bull; Unitário: <strong>{formatCurrency(item.valorUnitario)}</strong>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="font-heading font-bold text-sm text-gold">
+                      {formatCurrency(item.valorTotal)}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+        ) : (
+          agendamento.servicos &&
+          agendamento.servicos.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Serviços Selecionados
+              </h4>
+              <div className="space-y-1.5">
+                {agendamento.servicos.map((s) => (
+                  <div
+                    key={s.id}
+                    className="bg-surface-2/60 border border-border-subtle rounded-xl p-2.5 flex items-center justify-between text-xs"
+                  >
+                    <span className="text-text-main font-medium">{s.nome}</span>
+                    <span className="text-gold font-semibold">{formatCurrency(s.preco)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
         )}
 
         {/* OBSERVAÇÕES DO CLIENTE */}

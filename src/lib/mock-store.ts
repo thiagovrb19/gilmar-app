@@ -366,9 +366,12 @@ export function mockExcluirCliente(clienteId: string): boolean {
   return store.clientes.length < initialCount;
 }
 
-/** Cria agendamento no store local */
+/** Cria ou atualiza agendamento no store local */
 export function mockCriarAgendamento(params: {
-  clienteId: string;
+  clienteId?: string;
+  clienteNome?: string;
+  clienteWhatsapp?: string;
+  agendamentoIdExistente?: string;
   servicosIds: string[];
   inicio: string;
   observacao?: string;
@@ -382,19 +385,45 @@ export function mockCriarAgendamento(params: {
 }): { success: boolean; agendamento: Agendamento; error?: string } {
   const store = loadStore();
 
-  let cliente = store.clientes.find((c) => c.id === params.clienteId);
+  const nomeInformado = (params.clienteNome || "").trim();
+  const whatsappInformado = (params.clienteWhatsapp || "").replace(/\D/g, "");
+
+  let cliente = params.clienteId
+    ? store.clientes.find((c) => c.id === params.clienteId)
+    : undefined;
+
+  if (!cliente && whatsappInformado.length >= 8) {
+    cliente = store.clientes.find(
+      (c) => c.whatsapp.replace(/\D/g, "").slice(-8) === whatsappInformado.slice(-8)
+    );
+  }
+
+  if (!cliente && nomeInformado) {
+    cliente = store.clientes.find(
+      (c) => c.nome.trim().toLowerCase() === nomeInformado.toLowerCase()
+    );
+  }
+
   if (!cliente) {
+    const newId = params.clienteId || "cli-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 6);
     cliente = {
-      id: params.clienteId,
-      nome: "Cliente",
-      whatsapp: "32999999999",
+      id: newId,
+      nome: nomeInformado || "Cliente",
+      whatsapp: whatsappInformado || "329" + Math.floor(10000000 + Math.random() * 89999999).toString(),
       data_nascimento: null,
-      user_id: params.clienteId,
-      observacoes: null,
+      user_id: null,
+      observacoes: params.clienteLocalidade ? `Localidade: ${params.clienteLocalidade}` : null,
       aceite_lgpd_em: new Date().toISOString(),
       criado_em: new Date().toISOString(),
     };
     store.clientes.push(cliente);
+  } else {
+    if (nomeInformado && (cliente.nome === "Cliente" || cliente.nome !== nomeInformado)) {
+      cliente.nome = nomeInformado;
+    }
+    if (whatsappInformado.length >= 8) {
+      cliente.whatsapp = whatsappInformado;
+    }
   }
 
   const catalog = store.servicos && store.servicos.length > 0 ? store.servicos : DEMO_SERVICOS_STATIC;
@@ -411,6 +440,30 @@ export function mockCriarAgendamento(params: {
   const inicioDate = new Date(params.inicio);
   const fimDate = new Date(inicioDate.getTime() + 60 * 60 * 1000);
   const fimStr = fimDate.toISOString();
+
+  if (params.agendamentoIdExistente) {
+    const existingIdx = store.agendamentos.findIndex((a) => a.id === params.agendamentoIdExistente);
+    if (existingIdx >= 0) {
+      const updatedAg: Agendamento = {
+        ...store.agendamentos[existingIdx],
+        cliente_id: cliente.id,
+        inicio: params.inicio,
+        fim: fimStr,
+        valor_total: valorTotal,
+        observacao: params.observacao || null,
+        proposta_subtitulo: params.propostaSubtitulo || null,
+        proposta_objetivo: params.propostaObjetivo || null,
+        proposta_condicoes_pagamento: params.propostaCondicoesPagamento || null,
+        cliente_localidade: params.clienteLocalidade || null,
+        proposta_itens_json: params.propostaItensJson || null,
+        cliente,
+        servicos: servicosMarcados.length > 0 ? servicosMarcados : [DEMO_SERVICOS_STATIC[0]],
+      };
+      store.agendamentos[existingIdx] = updatedAg;
+      saveStore(store);
+      return { success: true, agendamento: updatedAg };
+    }
+  }
 
   const novoAg: Agendamento = {
     id: "ag-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 6),
@@ -831,15 +884,25 @@ export function mockGetFinanceiro(): {
   };
 }
 
-/** Lista de clientes com estatísticas calculadas */
+/** Lista de clientes com estatísticas calculadas e propostas/orçamentos salvos */
 export function mockGetClientesComStats(): ClienteEstatistica[] {
   const store = loadStore();
 
   return store.clientes.map((c) => {
-    const agsDoCliente = store.agendamentos.filter((a) => a.cliente_id === c.id);
+    const agsDoCliente = store.agendamentos
+      .filter((a) => a.cliente_id === c.id)
+      .map((a) => ({ ...a, cliente: c }))
+      .sort((a, b) => (a.inicio < b.inicio ? 1 : -1));
     const concluidos = agsDoCliente.filter((a) => a.status === "concluido");
+    const ativosOuConcluidos = agsDoCliente.filter((a) => a.status !== "cancelado");
     const totalGasto = concluidos.reduce((acc, a) => acc + (a.valor_total || 0), 0);
-    const ultimaVisita = concluidos.length > 0 ? concluidos[concluidos.length - 1].inicio : null;
+    const valorTotalOrcamentos = ativosOuConcluidos.reduce((acc, a) => acc + (a.valor_total || 0), 0);
+    const ultimaVisita =
+      concluidos.length > 0
+        ? concluidos[0].inicio
+        : ativosOuConcluidos.length > 0
+        ? ativosOuConcluidos[0].inicio
+        : null;
 
     return {
       ...c,
@@ -849,7 +912,10 @@ export function mockGetClientesComStats(): ClienteEstatistica[] {
       dias_sem_vir: ultimaVisita ? Math.floor((Date.now() - new Date(ultimaVisita).getTime()) / 86400000) : 0,
       multas_pendentes_qtd: 0,
       multas_pendentes_valor: 0,
-      servico_mais_usado: "Corte (máquina e tesoura)",
+      servico_mais_usado: agsDoCliente[0]?.servicos?.[0]?.nome || "Elétrica e Manutenção",
+      total_orcamentos: ativosOuConcluidos.length,
+      valor_total_orcamentos: valorTotalOrcamentos,
+      agendamentos: agsDoCliente,
     };
   });
 }

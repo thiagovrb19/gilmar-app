@@ -281,4 +281,7 @@ export interface ClienteEstatistica {
   multas_pendentes_qtd: number;
   multas_pendentes_valor: number;
   servico_mais_usado?: string | null;
+  total_orcamentos?: number;
+  valor_total_orcamentos?: number;
+  agendamentos?: Agendamento[];
 }
