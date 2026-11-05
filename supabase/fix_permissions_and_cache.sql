@@ -1,3 +1,6 @@
+-- >>> OBSOLETO: NÃO RODAR. Use apenas supabase/008_correcoes_gerais.sql <<<
+-- Motivo: reabre GRANT ALL para o papel anônimo (expõe dados de clientes).
+
 -- ==============================================================================
 -- CORREÇÃO IMEDIATA: PERMISSÕES E RECARREGAMENTO DE CACHE DO POSTGREST
 -- Execute este script no SQL Editor do Supabase para corrigir o erro PGRST125

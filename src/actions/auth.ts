@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSyntheticEmail, normalizePhone } from "@/lib/formatters";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { ADMIN_COOKIE, createAdminSessionToken, verifyAdminSessionToken } from "@/lib/admin-session";
 
 export interface AuthResponse {
   success: boolean;
@@ -402,13 +403,18 @@ export async function loginAdmin(
 ): Promise<AuthResponse> {
   try {
     const emailNorm = (email || "").trim().toLowerCase();
+    // Senha mestre: defina ADMIN_PASSWORD (e opcionalmente ADMIN_LOGIN) nas variáveis de ambiente.
+    // Sem ADMIN_PASSWORD, mantém as credenciais legadas por compatibilidade (TROQUE em produção).
+    const envPassword = process.env.ADMIN_PASSWORD;
+    const loginsValidos = ["gilmar", "gilmar@gseletrica.com", "luizfernando7722@gmail.com"];
+    if (process.env.ADMIN_LOGIN) loginsValidos.push(process.env.ADMIN_LOGIN.trim().toLowerCase());
     const isMasterAdmin =
-      (emailNorm === "gilmar" || emailNorm === "gilmar@gseletrica.com" || emailNorm === "luizfernando7722@gmail.com") &&
-      (senha === "gilmar2026" || senha === "gilmar123" || senha === "luizfg7");
+      loginsValidos.includes(emailNorm) &&
+      (envPassword ? senha === envPassword : ["gilmar2026", "gilmar123", "luizfg7"].includes(senha));
 
     if (isMasterAdmin) {
       const cookieStore = await cookies();
-      cookieStore.set("barbearia_admin_session", "luiz_master_active", {
+      cookieStore.set(ADMIN_COOKIE, await createAdminSessionToken(), {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 60 * 60 * 24 * 30, // 30 dias de sessão ativa
@@ -469,7 +475,7 @@ export async function loginAdmin(
     }
 
     const cookieStore = await cookies();
-    cookieStore.set("barbearia_admin_session", "luiz_master_active", {
+    cookieStore.set(ADMIN_COOKIE, await createAdminSessionToken(), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24 * 30,
@@ -493,7 +499,7 @@ export async function loginAdmin(
 /** Logout geral */
 export async function logoutAction() {
   const cookieStore = await cookies();
-  cookieStore.delete("barbearia_admin_session");
+  cookieStore.delete(ADMIN_COOKIE);
   cookieStore.delete("barbearia_cliente_session");
 
   try {
@@ -509,9 +515,9 @@ export async function logoutAction() {
 /** Obter usuário autenticado atual */
 export async function getCurrentUser() {
   const cookieStore = await cookies();
-  const adminCookie = cookieStore.get("barbearia_admin_session")?.value;
+  const adminCookie = cookieStore.get(ADMIN_COOKIE)?.value;
 
-  if (adminCookie === "luiz_master_active") {
+  if (await verifyAdminSessionToken(adminCookie)) {
     return {
       id: "a0000000-0000-0000-0000-000000000001",
       email: "gilmar@gseletrica.com",

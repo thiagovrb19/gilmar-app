@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { ADMIN_COOKIE, verifyAdminSessionToken } from "@/lib/admin-session";
 import { getSanitizedSupabaseUrl, getSanitizedAnonKey, isSupabaseConfigured } from "@/lib/supabase/config";
 
 export async function middleware(request: NextRequest) {
@@ -9,12 +10,13 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const adminCookie = request.cookies.get("barbearia_admin_session")?.value;
+  const adminCookie = request.cookies.get(ADMIN_COOKIE)?.value;
+  const adminValido = await verifyAdminSessionToken(adminCookie);
   const pathname = request.nextUrl.pathname;
 
   // Protege rotas /admin exigindo sessão do admin
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-    if (adminCookie !== "luiz_master_active") {
+    if (!adminValido) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin/login";
       return NextResponse.redirect(url);
@@ -22,7 +24,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (adminCookie === "luiz_master_active") {
+  if (adminValido) {
     return response;
   }
 

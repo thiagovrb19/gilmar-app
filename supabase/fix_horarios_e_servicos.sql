@@ -1,3 +1,6 @@
+-- >>> OBSOLETO: NÃO RODAR. Use apenas supabase/008_correcoes_gerais.sql <<<
+-- Motivo: não corrige o fuso horário (mesmo bug) e reabre GRANT ALL para anon.
+
 -- ==============================================================================
 -- CORREÇÃO DEFINITIVA: FUSO HORÁRIO DE CLIENTES & RECARGA DE SCHEMA
 -- GS Elétrica e Manutenção - Gilmar Sales (Executar no SQL Editor do Supabase)

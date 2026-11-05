@@ -25,16 +25,7 @@ ON CONFLICT (id) DO UPDATE SET
   ordem = EXCLUDED.ordem,
   icone = EXCLUDED.icone;
 
--- 2. Vincular Itens do Combo Check-up
-INSERT INTO public.combo_itens (combo_id, servico_id)
-VALUES
-  ('c0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000002'),
-  ('c0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000005'),
-  ('c0000000-0000-0000-0000-000000000009', 'c0000000-0000-0000-0000-000000000006')
-ON CONFLICT DO NOTHING;
-
 -- 3. Horário de Atendimento Padrão (Segunda a Sábado, das 07:00 às 18:00)
-DELETE FROM public.horario_funcionamento;
 INSERT INTO public.horario_funcionamento (dia_semana, abre, fecha, ativo)
 VALUES
   (0, '08:00:00', '12:00:00', false), -- Domingo fechado (plantão sob consulta)
@@ -43,7 +34,8 @@ VALUES
   (3, '07:00:00', '18:00:00', true),  -- Quarta-feira
   (4, '07:00:00', '18:00:00', true),  -- Quinta-feira
   (5, '07:00:00', '18:00:00', true),  -- Sexta-feira
-  (6, '07:00:00', '13:00:00', true);  -- Sábado
+  (6, '07:00:00', '13:00:00', true)   -- Sábado
+ON CONFLICT (dia_semana) DO NOTHING; -- requer a migration 008 (índice único)
 
 -- 4. Configurações Globais Padrão
 INSERT INTO public.configuracoes (

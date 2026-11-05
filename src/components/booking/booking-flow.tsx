@@ -39,6 +39,14 @@ import { loginCliente, cadastrarCliente } from "@/actions/auth";
 import { abrirPropostaPDF, formatarDataBR, calcularValidadeBR, DadosPropostaPDF } from "@/lib/pdf/proposta-pdf";
 import { linkWhatsAppPedido, WHATSAPP_GILMAR_DISPLAY } from "@/lib/whatsapp";
 
+/** Data local (YYYY-MM-DD) sem converter para UTC, evitando "pular" o dia após 21h */
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 interface BookingFlowProps {
   initialServices: Servico[];
   config: Configuracao;
@@ -82,6 +90,7 @@ export function BookingFlow({
   // Campos de identificação simples do cliente (sem criar conta ou senha)
   const [authNome, setAuthNome] = useState(initialUser?.nome || "");
   const [authWhats, setAuthWhats] = useState("");
+  const [formErrors, setFormErrors] = useState<{ nome?: string; whats?: string }>({});
 
   // Campos completos da Proposta Comercial (Modelo PDF Oficial do Gilmar)
   const [clienteNomeProposta, setClienteNomeProposta] = useState(initialUser?.nome || "");
@@ -108,11 +117,11 @@ export function BookingFlow({
       // Pré-selecionar o primeiro dia útil que não seja domingo nem esteja fechado
       const firstValid = dates.find((d) => {
         if (d.getDay() === 0) return false;
-        const dStr = d.toISOString().split("T")[0];
+        const dStr = toLocalDateStr(d);
         const exc = initialDiasExcecao.find((e) => e.data === dStr);
         return exc?.tipo !== "fechado";
       }) || dates[0];
-      setSelectedDate(firstValid.toISOString().split("T")[0]);
+      setSelectedDate(toLocalDateStr(firstValid));
     }
   }, [config.janela_dias, initialDiasExcecao]);
 
@@ -398,6 +407,7 @@ export function BookingFlow({
   };
 
   const handleGerarPDFOrcamento = () => {
+    if (!validarIdentificacao()) return;
     const nomeFinal =
       clienteNomeProposta.trim() || authNome.trim() || currentUser?.nome || "";
     if (!nomeFinal) {
@@ -473,7 +483,24 @@ export function BookingFlow({
     }
   };
 
+  /** Valida Nome e WhatsApp e mostra o erro no próprio campo */
+  const validarIdentificacao = (): boolean => {
+    const nome = (clienteNomeProposta.trim() || authNome.trim() || currentUser?.nome || "").trim();
+    const digits = authWhats.replace(/\D/g, "");
+    const errs: { nome?: string; whats?: string } = {};
+    if (nome.length < 2) errs.nome = "Informe seu nome ou empresa.";
+    if (digits.length < 10) errs.whats = "Informe um WhatsApp com DDD para o Gilmar retornar o orçamento.";
+    setFormErrors(errs);
+    if (errs.nome || errs.whats) {
+      toast.error(errs.nome || errs.whats || "Preencha os campos obrigatórios.");
+      document.getElementById(errs.nome ? "campo-nome-cliente" : "campo-whats-cliente")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    return true;
+  };
+
   const executeBooking = async (targetClienteId?: string) => {
+    if (!validarIdentificacao()) return;
     if (!acceptedPolicy) {
       toast.error("Você precisa concordar com a política de cancelamento.");
       return;
@@ -786,7 +813,7 @@ export function BookingFlow({
           {/* Carrossel de Dias com Scroll Horizontal Otimizado */}
           <div className="flex gap-2.5 overflow-x-auto pb-4 pt-1 no-scrollbar touch-pan-x">
             {availableDates.map((dateObj) => {
-              const dateStr = dateObj.toISOString().split("T")[0];
+              const dateStr = toLocalDateStr(dateObj);
               const dayOfWeek = dateObj.getDay();
               const excecao = initialDiasExcecao.find((e) => e.data === dateStr);
               const isClosed = dayOfWeek === 0 || excecao?.tipo === "fechado";
@@ -1036,29 +1063,38 @@ export function BookingFlow({
                   Nome do Cliente / Empresa <span className="text-gold">*</span>
                 </label>
                 <input
+                  id="campo-nome-cliente"
                   type="text"
                   required
                   value={clienteNomeProposta}
                   onChange={(e) => {
                     setClienteNomeProposta(e.target.value);
                     setAuthNome(e.target.value);
+                    setFormErrors((p) => ({ ...p, nome: undefined }));
                   }}
                   placeholder="Ex: Felipe / Empresa"
-                  className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
+                  className={`w-full bg-surface-2 border rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold ${formErrors.nome ? "border-destructive" : "border-border-subtle"}`}
                 />
+                {formErrors.nome && <p className="text-destructive text-[11px] mt-1">{formErrors.nome}</p>}
               </div>
 
               <div>
                 <label className="text-text-muted font-medium block mb-1">
-                  WhatsApp / Telefone (Opcional):
+                  WhatsApp / Telefone <span className="text-gold">*</span>:
                 </label>
                 <input
+                  id="campo-whats-cliente"
                   type="tel"
+                  inputMode="tel"
                   value={authWhats}
-                  onChange={(e) => setAuthWhats(formatPhone(e.target.value))}
+                  onChange={(e) => {
+                    setAuthWhats(formatPhone(e.target.value));
+                    setFormErrors((p) => ({ ...p, whats: undefined }));
+                  }}
                   placeholder="(32) 99999-9999"
-                  className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold"
+                  className={`w-full bg-surface-2 border rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold ${formErrors.whats ? "border-destructive" : "border-border-subtle"}`}
                 />
+                {formErrors.whats && <p className="text-destructive text-[11px] mt-1">{formErrors.whats}</p>}
               </div>
 
               <div>
