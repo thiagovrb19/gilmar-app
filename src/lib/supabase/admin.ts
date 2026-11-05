@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getSanitizedSupabaseUrl, getSanitizedServiceRoleKey } from "./config";
+import { getSanitizedSupabaseUrl, getSanitizedServiceRoleKey, getSanitizedAnonKey, isServiceRoleConfigured } from "./config";
 
 /**
  * Cliente Supabase com privilégios de Service Role.
@@ -8,9 +8,11 @@ import { getSanitizedSupabaseUrl, getSanitizedServiceRoleKey } from "./config";
  */
 export function createAdminClient() {
   const supabaseUrl = getSanitizedSupabaseUrl();
-  const serviceRoleKey = getSanitizedServiceRoleKey();
+  const keyToUse = isServiceRoleConfigured()
+    ? getSanitizedServiceRoleKey()
+    : getSanitizedAnonKey();
 
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient(supabaseUrl, keyToUse, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

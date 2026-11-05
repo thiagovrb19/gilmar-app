@@ -1,157 +1,10 @@
-"use server";
+﻿"use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "./auth";
 import { Servico, Configuracao, Agendamento, Multa } from "@/lib/supabase/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-
-const DEFAULT_SERVICOS: Servico[] = [
-  {
-    id: "c0000000-0000-0000-0000-000000000001",
-    nome: "Troca de lâmpadas e luminárias",
-    descricao: "Troca de lâmpadas, luminárias simples e spots.",
-    preco: 50.0,
-    duracao_min: 45,
-    icone: "lampada",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 1,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000002",
-    nome: "Troca de chuveiro",
-    descricao: "Desinstalação do chuveiro antigo e instalação do novo.",
-    preco: 120.0,
-    duracao_min: 60,
-    icone: "chuveiro",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 2,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000003",
-    nome: "Troca de tomadas e interruptores",
-    descricao: "Troca de tomadas ou interruptores simples.",
-    preco: 40.0,
-    duracao_min: 30,
-    icone: "tomada",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 3,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000004",
-    nome: "Troca de disjuntor",
-    descricao: "Substituição de disjuntor no quadro de distribuição.",
-    preco: 60.0,
-    duracao_min: 45,
-    icone: "quadro",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 4,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000005",
-    nome: "Instalação de tomadas e interruptores",
-    descricao: "Instalação de novos pontos de tomadas ou interruptores.",
-    preco: 90.0,
-    duracao_min: 60,
-    icone: "tomada",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 5,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000006",
-    nome: "Instalação de ventiladores e luminárias",
-    descricao: "Instalação completa de ventiladores ou luminárias.",
-    preco: 120.0,
-    duracao_min: 90,
-    icone: "lampada",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 6,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000007",
-    nome: "Ligação de padrão (monofásico)",
-    descricao: "Instalação do padrão de entrada monofásico.",
-    preco: 450.0,
-    duracao_min: 180,
-    icone: "padrao",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 7,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000008",
-    nome: "Ligação de padrão (trifásico)",
-    descricao: "Instalação do padrão de entrada trifásico.",
-    preco: 750.0,
-    duracao_min: 240,
-    icone: "padrao",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 8,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000009",
-    nome: "Montagem de quadro de distribuição",
-    descricao: "Montagem completa de quadro de distribuição.",
-    preco: 600.0,
-    duracao_min: 180,
-    icone: "quadro",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 9,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000010",
-    nome: "Manutenção elétrica industrial",
-    descricao: "Manutenção preventiva e corretiva em máquinas e painéis industriais (R$ 60,00/h).",
-    preco: 60.0,
-    duracao_min: 60,
-    icone: "industrial",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 10,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000011",
-    nome: "Instalação de motores elétricos",
-    descricao: "Instalação e ligação de motores monofásicos ou trifásicos.",
-    preco: 250.0,
-    duracao_min: 120,
-    icone: "industrial",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 11,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-  {
-    id: "c0000000-0000-0000-0000-000000000012",
-    nome: "Instalação de inversores de frequência",
-    descricao: "Instalação e parametrização básica de inversores de frequência.",
-    preco: 400.0,
-    duracao_min: 120,
-    icone: "industrial",
-    tipo: "avulso",
-    ativo: true,
-    ordem: 12,
-    criado_em: "2026-01-01T00:00:00Z",
-  },
-];
 
 const DEFAULT_CONFIG: Configuracao = {
   id: 1,
@@ -189,19 +42,16 @@ const DEFAULT_HORARIOS: import("@/lib/supabase/types").HorarioFuncionamento[] = 
   { dia_semana: 6, abre: "07:00:00", fecha: "13:00:00", ativo: true },  // Sábado (07h às 13h)
 ];
 
-/** Busca serviços ativos e combos ordenados */
+/** Busca serviços ativos e combos ordenados diretamente do banco de dados */
 export async function getServicos(apenasAtivos: boolean = true): Promise<Servico[]> {
   if (!isSupabaseConfigured()) {
-    return apenasAtivos ? DEFAULT_SERVICOS.filter((s) => s.ativo) : DEFAULT_SERVICOS;
+    const { loadStore } = await import("@/lib/mock-store");
+    const store = loadStore();
+    const servicos = store.servicos || [];
+    return apenasAtivos ? servicos.filter((s) => s.ativo) : servicos;
   }
 
-  let supabase: any;
-  try {
-    const { createAdminClient } = await import("@/lib/supabase/admin");
-    supabase = createAdminClient();
-  } catch {
-    supabase = await createClient();
-  }
+  const supabase = await createClient();
 
   let query = supabase
     .from("servicos")
@@ -214,32 +64,12 @@ export async function getServicos(apenasAtivos: boolean = true): Promise<Servico
 
   const { data, error } = await query;
 
-  if (error || !data || data.length === 0) {
-    if (error) {
-      console.error("Erro ao buscar serviços no Supabase:", error);
-    }
-
-    // Se a tabela existe mas está vazia no banco, insere os serviços padrão automaticamente
-    if (!error && data && data.length === 0) {
-      try {
-        const { data: seeded } = await supabase
-          .from("servicos")
-          .upsert(DEFAULT_SERVICOS)
-          .select("*")
-          .order("ordem", { ascending: true });
-
-        if (seeded && seeded.length > 0) {
-          return apenasAtivos ? (seeded as Servico[]).filter((s) => s.ativo) : (seeded as Servico[]);
-        }
-      } catch (seedErr) {
-        console.error("Erro ao fazer seed de serviços no Supabase:", seedErr);
-      }
-    }
-
-    return apenasAtivos ? DEFAULT_SERVICOS.filter((s) => s.ativo) : DEFAULT_SERVICOS;
+  if (error) {
+    console.error("Erro ao buscar serviços no Supabase:", error);
+    return [];
   }
 
-  return data as Servico[];
+  return (data || []) as Servico[];
 }
 
 /** Busca configurações do app */
@@ -670,39 +500,83 @@ export async function criarAgendamentoAction(params: {
         const safeWhatsapp =
           userPhone && userPhone.replace(/\D/g, "").length >= 8
             ? userPhone.replace(/\D/g, "")
-            : "329" + Math.floor(10000000 + Math.random() * 89999999).toString();
+            : "55329" + Math.floor(10000000 + Math.random() * 89999999).toString();
+
+        const idToInsert = finalClienteId && isValidUuid(finalClienteId) ? finalClienteId : crypto.randomUUID();
 
         const { data: newCli, error: newCliErr } = await adminSupabase
           .from("clientes")
           .insert({
-            nome: userName,
+            id: idToInsert,
+            nome: userName || "Cliente",
             whatsapp: safeWhatsapp,
             data_nascimento: user?.cliente?.data_nascimento || null,
             observacoes: params.clienteLocalidade ? `Localidade: ${params.clienteLocalidade}` : null,
           })
           .select("id, nome, whatsapp")
-          .single();
+          .maybeSingle();
 
         if (newCli?.id) {
           clienteIdReal = newCli.id;
           clienteWhatsappFinal = newCli.whatsapp;
         } else if (newCliErr) {
-          // Caso tenha dado conflito no whatsapp por coincidência, tenta inserir com sufixo único
-          const retryWhatsapp = "329" + Date.now().toString().slice(-8);
-          const { data: retryCli } = await adminSupabase
+          console.warn("Aviso ao inserir cliente no Supabase:", newCliErr.message);
+          // Se já existe um cliente com este telefone (conflito de chave única), busca-o
+          const { data: existingCli } = await adminSupabase
             .from("clientes")
-            .insert({
-              nome: userName,
-              whatsapp: retryWhatsapp,
-              observacoes: params.clienteLocalidade ? `Localidade: ${params.clienteLocalidade}` : null,
-            })
             .select("id, nome, whatsapp")
-            .single();
-          if (retryCli?.id) {
-            clienteIdReal = retryCli.id;
-            clienteWhatsappFinal = retryCli.whatsapp;
+            .or(`whatsapp.eq.${safeWhatsapp},whatsapp.ilike.%${safeWhatsapp.slice(-8)}%`)
+            .limit(1)
+            .maybeSingle();
+
+          if (existingCli?.id) {
+            clienteIdReal = existingCli.id;
+            clienteWhatsappFinal = existingCli.whatsapp;
+          } else {
+            // Tenta inserir com WhatsApp único gerado com timestamp
+            const fallbackId = crypto.randomUUID();
+            const retryWhatsapp = "55329" + Date.now().toString().slice(-8);
+            const { data: retryCli, error: retryErr } = await adminSupabase
+              .from("clientes")
+              .insert({
+                id: fallbackId,
+                nome: userName || "Cliente",
+                whatsapp: retryWhatsapp,
+                observacoes: params.clienteLocalidade ? `Localidade: ${params.clienteLocalidade}` : null,
+              })
+              .select("id, nome, whatsapp")
+              .maybeSingle();
+
+            if (retryCli?.id) {
+              clienteIdReal = retryCli.id;
+              clienteWhatsappFinal = retryCli.whatsapp;
+            } else if (!retryErr) {
+              clienteIdReal = fallbackId;
+              clienteWhatsappFinal = retryWhatsapp;
+            }
           }
+        } else {
+          clienteIdReal = idToInsert;
+          clienteWhatsappFinal = safeWhatsapp;
         }
+      }
+    }
+
+    // Se ainda assim o ID não foi resolvido, cria o registro de emergência antes de prosseguir com o agendamento
+    if (!clienteIdReal || !isValidUuid(clienteIdReal)) {
+      try {
+        const emergencyId = crypto.randomUUID();
+        const emergencyWhats = `553299${Date.now().toString().slice(-7)}`;
+        await adminSupabase.from("clientes").insert({
+          id: emergencyId,
+          nome: nomeInformado || "Cliente",
+          whatsapp: emergencyWhats,
+          observacoes: "Cadastro automático criado pelo fluxo de agendamento",
+        });
+        clienteIdReal = emergencyId;
+        clienteWhatsappFinal = emergencyWhats;
+      } catch (emErr) {
+        console.error("Falha na criação de emergência do cliente:", emErr);
       }
     }
 
