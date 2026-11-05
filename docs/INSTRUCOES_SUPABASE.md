@@ -2,7 +2,7 @@
 
 **Para:** quem tem acesso ao painel do Supabase (projeto `kiyjiefcnaafeufnbxbi`)
 **Tempo estimado:** 10 minutos
-**Arquivo a executar:** `supabase/008_correcoes_gerais.sql` (anexo / no repositório)
+**Arquivo a executar:** `supabase/migrations/008_correcoes_gerais.sql` (anexo / no repositório)
 
 ---
 

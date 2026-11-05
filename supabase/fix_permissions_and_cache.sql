@@ -1,4 +1,4 @@
--- >>> OBSOLETO: NÃO RODAR. Use apenas supabase/008_correcoes_gerais.sql <<<
+-- >>> OBSOLETO: NÃO RODAR. Use apenas supabase/migrations/008_correcoes_gerais.sql <<<
 -- Motivo: reabre GRANT ALL para o papel anônimo (expõe dados de clientes).
 
 -- ==============================================================================
