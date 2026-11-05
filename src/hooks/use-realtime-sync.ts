@@ -51,7 +51,7 @@ export function useRealtimeSync({
   pollIntervalMs = 25000,
 }: UseRealtimeSyncOptions = {}) {
   const router = useRouter();
-  const lastSyncTimeRef = useRef<number>(Date.now());
+  const lastSyncTimeRef = useRef<number>(0);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const triggerSync = useCallback(() => {

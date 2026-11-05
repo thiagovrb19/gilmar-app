@@ -8,6 +8,10 @@ import { getSanitizedSupabaseUrl, getSanitizedServiceRoleKey, getSanitizedAnonKe
  */
 export function createAdminClient() {
   const supabaseUrl = getSanitizedSupabaseUrl();
+  if (!isServiceRoleConfigured()) {
+    // Sem a service_role o app cai na chave pública e o RLS bloqueia leituras/gravações do servidor.
+    console.warn("[supabase] SUPABASE_SERVICE_ROLE_KEY ausente/inválida: usando chave pública (RLS vai bloquear operações).");
+  }
   const keyToUse = isServiceRoleConfigured()
     ? getSanitizedServiceRoleKey()
     : getSanitizedAnonKey();

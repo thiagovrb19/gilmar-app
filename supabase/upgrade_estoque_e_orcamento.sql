@@ -1,3 +1,6 @@
+-- >>> OBSOLETO: NÃO RODAR. Use apenas supabase/008_correcoes_gerais.sql <<<
+-- Motivo: falha com 'no unique constraint matching ON CONFLICT' (horario_funcionamento) e desfaz tudo.
+
 -- ==============================================================================
 -- UPGRADE COMPLETO SUPABASE: ORÇAMENTO EM PDF + CONTROLE DE ESTOQUE (GILMAR.XLSX)
 -- ==============================================================================
