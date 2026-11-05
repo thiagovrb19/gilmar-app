@@ -564,7 +564,7 @@ export function AdminClientsView({
 
                                 <button
                                   type="button"
-                                  onClick={() => setDetailModalAgendamento({ ...ag, cliente: c })}
+                                  onClick={() => setDetailModalAgendamento({ ...ag, cliente: c as any })}
                                   className="inline-flex items-center gap-1.5 bg-surface-1 hover:bg-surface-3 text-text-main border border-border-subtle font-semibold text-xs px-3 py-2 rounded-xl transition-colors cursor-pointer"
                                 >
                                   <Eye className="w-3.5 h-3.5 text-gold" />

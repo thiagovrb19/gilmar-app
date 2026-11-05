@@ -49,6 +49,18 @@ export function getSanitizedServiceRoleKey(): string {
 }
 
 /**
+ * Valida se a chave Service Role fornecida é real ou se ainda é o placeholder de exemplo
+ */
+export function isServiceRoleConfigured(): boolean {
+  const key = getSanitizedServiceRoleKey();
+  if (!key) return false;
+  if (key.includes("placeholder") || key.includes("sua-chave") || key.includes("sua-service-role")) {
+    return false;
+  }
+  return key.length > 20;
+}
+
+/**
  * Verifica se as credenciais do Supabase estão devidamente configuradas no ambiente.
  * Evita chamadas de rede para domínios placeholder que causam timeouts de 5-10 segundos.
  */
