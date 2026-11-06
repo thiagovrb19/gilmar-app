@@ -59,7 +59,7 @@ function mapServicosEPreco(ag: any): Agendamento {
 export async function getDashboardHoje() {
   await requireAdmin();
 
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
   if (!isSupabaseConfigured()) {
     const { mockGetDashboardHoje } = await import("@/lib/mock-store");
@@ -70,25 +70,30 @@ export async function getDashboardHoje() {
   const inicioHoje = `${hoje}T00:00:00-03:00`;
   const fimHoje = `${hoje}T23:59:59-03:00`;
 
-  // Agendamentos de hoje
-  const { data: agendamentosHojeRaw } = await supabase
-    .from("agendamentos")
-    .select("*, cliente:clientes(*), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
-    .gte("inicio", inicioHoje)
-    .lte("inicio", fimHoje)
-    .order("inicio", { ascending: true });
+  // Todas as consultas em paralelo (antes eram 5 idas ao banco, uma depois da outra)
+  const [
+    { data: agendamentosHojeRaw },
+    { data: lancamentosHoje },
+    { count: totalClientesCount },
+    { data: clientesStats },
+    { data: multasPendentes },
+  ] = await Promise.all([
+    supabase
+      .from("agendamentos")
+      .select("*, cliente:clientes(*), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
+      .gte("inicio", inicioHoje)
+      .lte("inicio", fimHoje)
+      .order("inicio", { ascending: true }),
+    supabase.from("lancamentos").select("*").eq("tipo", "entrada").eq("data", hoje),
+    supabase.from("clientes").select("*", { count: "exact", head: true }),
+    supabase.from("v_clientes_estatisticas").select("*"),
+    supabase.from("multas").select("*, cliente:clientes(*)").eq("status", "pendente"),
+  ]);
 
   const agendamentosHoje = (agendamentosHojeRaw || []).map(mapServicosEPreco);
 
   // Agendamentos ativos hoje (não cancelados)
   const agendamentosAtivos = agendamentosHoje.filter((a) => a.status !== "cancelado");
-
-  // Faturamento recebido hoje em lançamentos de entrada
-  const { data: lancamentosHoje } = await supabase
-    .from("lancamentos")
-    .select("*")
-    .eq("tipo", "entrada")
-    .eq("data", hoje);
 
   const totalHojeRecebido = (lancamentosHoje || []).reduce(
     (acc, l) => acc + Number(l.valor),
@@ -100,16 +105,6 @@ export async function getDashboardHoje() {
     (acc, a) => acc + Number(a.valor_total || 0),
     0
   );
-
-  // Contagem de clientes cadastrados
-  const { count: totalClientesCount } = await supabase
-    .from("clientes")
-    .select("*", { count: "exact", head: true });
-
-  // Clientes com estatísticas para os alertas de sumidos e aniversariantes
-  const { data: clientesStats } = await supabase
-    .from("v_clientes_estatisticas")
-    .select("*");
 
   const clientesSumidos = (clientesStats || []).filter(
     (c) => c.dias_sem_vir !== null && c.dias_sem_vir >= 15
@@ -125,11 +120,6 @@ export async function getDashboardHoje() {
     const niverDia = niverDate.getUTCDate();
     return niverMes === mesAtual && Math.abs(niverDia - diaAtual) <= 4;
   });
-
-  const { data: multasPendentes } = await supabase
-    .from("multas")
-    .select("*, cliente:clientes(*)")
-    .eq("status", "pendente");
 
   return {
     agendamentosHoje,
@@ -159,31 +149,29 @@ export async function getAgendaPeriodo(inicioStr: string, fimStr: string) {
 
   const supabase = createAdminClient();
 
-  const { data: agendamentosRaw } = await supabase
-    .from("agendamentos")
-    .select("*, cliente:clientes(*), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
-    .gte("inicio", inicioStr)
-    .lte("inicio", fimStr)
-    .order("inicio", { ascending: true });
+  // 4 consultas em paralelo (antes eram uma depois da outra)
+  const [
+    { data: agendamentosRaw },
+    { data: bloqueios },
+    { data: horariosFixos },
+    { data: diasExcecao },
+  ] = await Promise.all([
+    supabase
+      .from("agendamentos")
+      .select("*, cliente:clientes(*), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
+      .gte("inicio", inicioStr)
+      .lte("inicio", fimStr)
+      .order("inicio", { ascending: true }),
+    supabase.from("bloqueios").select("*").gte("inicio", inicioStr).lte("fim", fimStr),
+    supabase.from("horarios_fixos").select("*, cliente:clientes(*), servico:servicos(*)").eq("ativo", true),
+    supabase
+      .from("dias_excecao")
+      .select("*")
+      .gte("data", inicioStr.substring(0, 10))
+      .lte("data", fimStr.substring(0, 10)),
+  ]);
 
   const agendamentos = (agendamentosRaw || []).map(mapServicosEPreco);
-
-  const { data: bloqueios } = await supabase
-    .from("bloqueios")
-    .select("*")
-    .gte("inicio", inicioStr)
-    .lte("fim", fimStr);
-
-  const { data: horariosFixos } = await supabase
-    .from("horarios_fixos")
-    .select("*, cliente:clientes(*), servico:servicos(*)")
-    .eq("ativo", true);
-
-  const { data: diasExcecao } = await supabase
-    .from("dias_excecao")
-    .select("*")
-    .gte("data", inicioStr.substring(0, 10))
-    .lte("data", fimStr.substring(0, 10));
 
   return {
     agendamentos,
@@ -1004,41 +992,27 @@ export async function getClienteDetalhes(clienteId: string) {
 
   const supabase = createAdminClient();
 
-  const { data: cliente } = await supabase
-    .from("clientes")
-    .select("*")
-    .eq("id", clienteId)
-    .single();
-
-  const { data: estatisticas } = await supabase
-    .from("v_clientes_estatisticas")
-    .select("*")
-    .eq("id", clienteId)
-    .maybeSingle();
-
-  const { data: agendamentosRaw } = await supabase
-    .from("agendamentos")
-    .select("*, agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
-    .eq("cliente_id", clienteId)
-    .order("inicio", { ascending: false });
+  const [
+    { data: cliente },
+    { data: estatisticas },
+    { data: agendamentosRaw },
+    { data: multas },
+    { data: creditos },
+    { data: horariosFixos },
+  ] = await Promise.all([
+    supabase.from("clientes").select("*").eq("id", clienteId).single(),
+    supabase.from("v_clientes_estatisticas").select("*").eq("id", clienteId).maybeSingle(),
+    supabase
+      .from("agendamentos")
+      .select("*, agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
+      .eq("cliente_id", clienteId)
+      .order("inicio", { ascending: false }),
+    supabase.from("multas").select("*").eq("cliente_id", clienteId).order("criado_em", { ascending: false }),
+    supabase.from("creditos").select("*, servico:servicos(*)").eq("cliente_id", clienteId),
+    supabase.from("horarios_fixos").select("*, servico:servicos(*)").eq("cliente_id", clienteId),
+  ]);
 
   const agendamentos = (agendamentosRaw || []).map(mapServicosEPreco);
-
-  const { data: multas } = await supabase
-    .from("multas")
-    .select("*")
-    .eq("cliente_id", clienteId)
-    .order("criado_em", { ascending: false });
-
-  const { data: creditos } = await supabase
-    .from("creditos")
-    .select("*, servico:servicos(*)")
-    .eq("cliente_id", clienteId);
-
-  const { data: horariosFixos } = await supabase
-    .from("horarios_fixos")
-    .select("*, servico:servicos(*)")
-    .eq("cliente_id", clienteId);
 
   const concluidos = agendamentos.filter((a) => a.status === "concluido");
   const totalGastoReal = concluidos.reduce((acc, a) => acc + Number(a.valor_total || 0), 0);
@@ -1127,27 +1101,33 @@ export async function getFinanceiroDados() {
 
   const supabase = createAdminClient();
 
-  // Lançamentos realizados (entradas e saídas efetivadas)
-  const { data: lancamentos } = await supabase
-    .from("lancamentos")
-    .select("*, cliente:clientes(nome)")
-    .order("data", { ascending: false })
-    .limit(200);
-
-  // Pendências de pagamento: agendamentos já concluídos com pagamento pendente
-  const { data: pendenciasRaw } = await supabase
-    .from("agendamentos")
-    .select("*, cliente:clientes(nome, whatsapp), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
-    .eq("status", "concluido")
-    .eq("pago", false)
-    .order("inicio", { ascending: false });
-
-  // Agendamentos ativos (faturamento previsto: agendados e confirmados não cancelados)
-  const { data: agendamentosPrevistosRaw } = await supabase
-    .from("agendamentos")
-    .select("*, cliente:clientes(nome, whatsapp), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
-    .in("status", ["agendado", "confirmado"])
-    .order("inicio", { ascending: true });
+  const [
+    { data: lancamentos },
+    { data: pendenciasRaw },
+    { data: agendamentosPrevistosRaw },
+    { data: multasPendentes },
+  ] = await Promise.all([
+    // Lançamentos realizados (entradas e saídas efetivadas)
+    supabase
+      .from("lancamentos")
+      .select("*, cliente:clientes(nome)")
+      .order("data", { ascending: false })
+      .limit(200),
+    // Pendências de pagamento: agendamentos concluídos com pagamento pendente
+    supabase
+      .from("agendamentos")
+      .select("*, cliente:clientes(nome, whatsapp), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
+      .eq("status", "concluido")
+      .eq("pago", false)
+      .order("inicio", { ascending: false }),
+    // Faturamento previsto: agendados e confirmados
+    supabase
+      .from("agendamentos")
+      .select("*, cliente:clientes(nome, whatsapp), agendamento_servicos(servico_id, preco_cobrado, servicos(*))")
+      .in("status", ["agendado", "confirmado"])
+      .order("inicio", { ascending: true }),
+    supabase.from("multas").select("*, cliente:clientes(nome, whatsapp)").eq("status", "pendente"),
+  ]);
 
   const pendencias = (pendenciasRaw || []).map(mapServicosEPreco);
   const agendamentosPrevistos = (agendamentosPrevistosRaw || []).map(mapServicosEPreco);
@@ -1156,11 +1136,6 @@ export async function getFinanceiroDados() {
     (acc, a) => acc + Number(a.valor_total || 0),
     0
   );
-
-  const { data: multasPendentes } = await supabase
-    .from("multas")
-    .select("*, cliente:clientes(nome, whatsapp)")
-    .eq("status", "pendente");
 
   return {
     lancamentos: (lancamentos || []) as Lancamento[],
