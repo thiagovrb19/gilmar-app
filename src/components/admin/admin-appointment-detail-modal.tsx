@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   X,
   Calendar,
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ExternalLink,
   Printer,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Agendamento } from "@/lib/supabase/types";
@@ -22,6 +23,7 @@ import { AdminAttachmentGallery } from "./admin-attachment-gallery";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { numeroDoPedido } from "@/lib/whatsapp";
 import { abrirPropostaPDF } from "@/lib/pdf/proposta-pdf";
+import { PropostaEditorModal } from "@/components/proposta/proposta-editor-modal";
 
 interface AdminAppointmentDetailModalProps {
   agendamento: Agendamento | null;
@@ -34,7 +36,25 @@ export function AdminAppointmentDetailModal({
   onClose,
   onRefresh,
 }: AdminAppointmentDetailModalProps) {
+  const [editandoProposta, setEditandoProposta] = useState(false);
   if (!agendamento) return null;
+
+  const itensParaEditar = (
+    agendamento.proposta_itens_json && agendamento.proposta_itens_json.length > 0
+      ? agendamento.proposta_itens_json
+      : (agendamento.servicos || []).map((s, idx) => ({
+          numero: String(idx + 1).padStart(2, "0"),
+          identificacao: `Item ${String(idx + 1).padStart(2, "0")}`,
+          servicoNome: s.nome,
+          escopo: `Execução de ${s.nome.toLowerCase()}.`,
+          descricao: s.descricao || "Fornecimento e instalação. Materiais e mão de obra inclusos.",
+          quantidade: 1,
+          valorUnitario: Number(s.preco || 0),
+          valorTotal: Number(s.preco || 0),
+          fotoUrl: null,
+          icone: s.icone,
+        }))
+  );
 
   const dataFormatada = formatDateFriendly(agendamento.inicio);
   const horaFormatada = formatTimeSaoPaulo(agendamento.inicio);
@@ -354,11 +374,45 @@ export function AdminAppointmentDetailModal({
 
           <button
             type="button"
+            onClick={() => setEditandoProposta(true)}
+            className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+            <span>Editar Proposta</span>
+          </button>
+
+          <button
+            type="button"
             onClick={onClose}
             className="bg-surface-2 hover:bg-surface-3 text-text-main border border-border-subtle font-semibold text-xs px-5 py-2.5 rounded-xl transition-colors"
           >
             Fechar Detalhes
           </button>
+
+          {editandoProposta && (
+            <PropostaEditorModal
+              open
+              modo="admin"
+              agendamentoId={agendamento.id}
+              numeroPedido={pedidoNum}
+              onClose={() => setEditandoProposta(false)}
+              onSaved={() => {
+                setEditandoProposta(false);
+                onRefresh?.();
+                onClose(); // reabra para ver os dados já atualizados
+              }}
+              inicial={{
+                clienteNome: agendamento.cliente?.nome || "Cliente",
+                clienteWhatsapp: agendamento.cliente?.whatsapp || "",
+                clienteLocalidade: agendamento.cliente_localidade || "",
+                subtitulo: agendamento.proposta_subtitulo || "",
+                objetivo: agendamento.proposta_objetivo || "",
+                condicoesPagamento: agendamento.proposta_condicoes_pagamento || "",
+                observacaoCliente: agendamento.observacao || "",
+                itens: itensParaEditar,
+              }}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -45,9 +45,9 @@ const DEFAULT_HORARIOS: import("@/lib/supabase/types").HorarioFuncionamento[] = 
 /** Busca serviços ativos e combos ordenados diretamente do banco de dados */
 export async function getServicos(apenasAtivos: boolean = true): Promise<Servico[]> {
   if (!isSupabaseConfigured()) {
-    const { loadStore } = await import("@/lib/mock-store");
+    const { loadStore, DEMO_SERVICOS_STATIC } = await import("@/lib/mock-store");
     const store = loadStore();
-    const servicos = store.servicos || [];
+    const servicos = store.servicos && store.servicos.length > 0 ? store.servicos : DEMO_SERVICOS_STATIC;
     return apenasAtivos ? servicos.filter((s) => s.ativo) : servicos;
   }
 
@@ -1187,3 +1187,156 @@ export async function getAgendamentoResumoAction(agendamentoId: string): Promise
   }
 }
 
+
+/** Item enviado pelo editor de proposta. A foto NÃO trafega: é resolvida no servidor por `fotoDe`. */
+export interface PropostaItemEditado {
+  numero: string;
+  identificacao: string;
+  servicoNome: string;
+  escopo: string;
+  descricao: string;
+  quantidade: number;
+  valorUnitario: number;
+  icone?: string;
+  /** índice do item original cuja foto deve ser mantida (null = sem foto) */
+  fotoDe?: number | null;
+}
+
+function limpar(v: unknown, max: number): string {
+  return String(v ?? "").replace(/\u0000/g, "").trim().slice(0, max);
+}
+
+/**
+ * Salva a proposta editada (textos, quantidades e, só para o admin, valores/itens).
+ * - Admin (Gilmar): pode editar tudo, adicionar/remover itens e alterar preços.
+ * - Cliente dono do orçamento: edita textos e quantidades; preços e nº de itens ficam travados.
+ */
+export async function salvarPropostaAction(params: {
+  agendamentoId: string;
+  clienteNome?: string;
+  clienteWhatsapp?: string;
+  clienteLocalidade?: string;
+  subtitulo?: string;
+  objetivo?: string;
+  condicoesPagamento?: string;
+  itens: PropostaItemEditado[];
+}): Promise<{ success: boolean; valor_total?: number; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return { success: false, error: "Sessão expirada. Abra o orçamento novamente." };
+    const isAdmin = user.role === "admin";
+
+    if (!params.agendamentoId || !Array.isArray(params.itens) || params.itens.length === 0) {
+      return { success: false, error: "A proposta precisa ter pelo menos 1 item." };
+    }
+    if (params.itens.length > 50) return { success: false, error: "Máximo de 50 itens por proposta." };
+
+    type Existente = import("@/lib/supabase/types").PropostaItemDetalhe;
+    let existentes: Existente[] = [];
+    let clienteIdDono: string | null = null;
+
+    const usarMock = !isSupabaseConfigured();
+    if (usarMock) {
+      const { loadStore } = await import("@/lib/mock-store");
+      const ag = loadStore().agendamentos.find((a) => a.id === params.agendamentoId);
+      if (!ag) return { success: false, error: "Orçamento não encontrado." };
+      existentes = (ag.proposta_itens_json || []) as Existente[];
+      clienteIdDono = ag.cliente_id;
+    } else {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const { data: ag } = await createAdminClient()
+        .from("agendamentos")
+        .select("id, cliente_id, proposta_itens_json")
+        .eq("id", params.agendamentoId)
+        .maybeSingle();
+      if (!ag) return { success: false, error: "Orçamento não encontrado." };
+      existentes = (ag.proposta_itens_json || []) as Existente[];
+      clienteIdDono = ag.cliente_id;
+    }
+
+    if (!isAdmin) {
+      const ehDono = !!user.clienteId && user.clienteId === clienteIdDono;
+      if (!ehDono) return { success: false, error: "Você não tem permissão para editar este orçamento." };
+      if (existentes.length === 0 || params.itens.length !== existentes.length) {
+        return { success: false, error: "Somente o Gilmar pode adicionar ou remover itens." };
+      }
+    }
+
+    const itensFinais: Existente[] = params.itens.map((it, idx) => {
+      // Cliente: preço sempre vem do que já está salvo; Admin: vale o que ele digitou
+      const original = isAdmin
+        ? (it.fotoDe != null ? existentes[it.fotoDe] : undefined)
+        : existentes[idx];
+      const quantidade = Math.min(999, Math.max(1, Math.floor(Number(it.quantidade) || 1)));
+      const valorUnitario = isAdmin
+        ? Math.min(10_000_000, Math.max(0, Number(it.valorUnitario) || 0))
+        : Number(existentes[idx].valorUnitario) || 0;
+      return {
+        numero: String(idx + 1).padStart(2, "0"),
+        identificacao: limpar(it.identificacao, 120) || `Item ${String(idx + 1).padStart(2, "0")}`,
+        servicoNome: limpar(it.servicoNome, 200) || "Serviço elétrico",
+        escopo: limpar(it.escopo, 1000),
+        descricao: limpar(it.descricao, 2000),
+        quantidade,
+        valorUnitario,
+        valorTotal: Math.round(quantidade * valorUnitario * 100) / 100,
+        fotoUrl: original?.fotoUrl ?? null,
+        icone: it.icone || original?.icone,
+      };
+    });
+
+    const valorTotal = Math.round(itensFinais.reduce((a, i) => a + i.valorTotal, 0) * 100) / 100;
+
+    const campos = {
+      proposta_subtitulo: limpar(params.subtitulo, 300) || null,
+      proposta_objetivo: limpar(params.objetivo, 2000) || null,
+      proposta_condicoes_pagamento: limpar(params.condicoesPagamento, 1000) || null,
+      cliente_localidade: limpar(params.clienteLocalidade, 200) || null,
+      proposta_itens_json: itensFinais,
+      valor_total: valorTotal,
+    };
+    const nome = limpar(params.clienteNome, 120);
+    const whatsapp = (params.clienteWhatsapp || "").replace(/\D/g, "");
+
+    if (usarMock) {
+      const { loadStore, saveStore } = await import("@/lib/mock-store");
+      const store = loadStore();
+      const ag = store.agendamentos.find((a) => a.id === params.agendamentoId);
+      if (ag) {
+        Object.assign(ag, campos);
+        if (ag.cliente && nome.length >= 2) ag.cliente.nome = nome;
+        saveStore(store);
+      }
+    } else {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const sb = createAdminClient();
+      const { error } = await sb.from("agendamentos").update(campos).eq("id", params.agendamentoId);
+      if (error) return { success: false, error: error.message };
+
+      if (clienteIdDono) {
+        const upd: Record<string, string> = {};
+        if (nome.length >= 2) upd.nome = nome;
+        if (isAdmin && whatsapp.length >= 8) upd.whatsapp = whatsapp;
+        if (Object.keys(upd).length > 0) {
+          // WhatsApp é único: se colidir com outro cliente, ignora só essa parte
+          const r = await sb.from("clientes").update(upd).eq("id", clienteIdDono);
+          if (r.error && upd.whatsapp) {
+            delete upd.whatsapp;
+            if (Object.keys(upd).length > 0) await sb.from("clientes").update(upd).eq("id", clienteIdDono);
+          }
+        }
+      }
+    }
+
+    revalidatePath("/admin/agenda");
+    revalidatePath("/admin");
+    revalidatePath("/admin/clientes");
+    revalidatePath("/admin/financeiro");
+    revalidatePath("/meus-agendamentos");
+    revalidatePath("/agendamento/sucesso");
+
+    return { success: true, valor_total: valorTotal };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar a proposta." };
+  }
+}

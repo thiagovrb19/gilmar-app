@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   MessageCircle,
 } from "lucide-react";
+import { SegurancaInfoCard } from "@/components/home/seguranca-info-card";
 import { ClientHeader } from "@/components/layout/client-header";
 import { getServiceIcon, IconWhatsApp } from "@/components/icons/barber-icons";
 import { getServicos, getConfiguracoes } from "@/actions/booking";
@@ -113,37 +114,31 @@ export default async function HomePage() {
 
         {/* 4 PILARES DE ATUAÇÃO COM EFEITO DE VIDRO E DEGRADÊ */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1">
+          <Link href="/agendar" className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1 active:scale-[0.98] block focus:outline-none focus-visible:ring-2 focus-visible:ring-gold" aria-label="Solicitar orçamento de industrial">
             <div className="w-10 h-10 mx-auto rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center">
               <Factory className="w-5 h-5" />
             </div>
             <h3 className="font-heading font-bold text-sm text-text-main">Industrial</h3>
             <p className="text-[11px] text-text-muted">Motores, inversores e painéis industriais</p>
-          </div>
+          </Link>
 
-          <div className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1">
+          <Link href="/agendar" className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1 active:scale-[0.98] block focus:outline-none focus-visible:ring-2 focus-visible:ring-gold" aria-label="Solicitar orçamento de residencial">
             <div className="w-10 h-10 mx-auto rounded-xl bg-gold/15 text-gold flex items-center justify-center">
               <Home className="w-5 h-5" />
             </div>
             <h3 className="font-heading font-bold text-sm text-text-main">Residencial</h3>
             <p className="text-[11px] text-text-muted">Instalação, luminárias e tomadas</p>
-          </div>
+          </Link>
 
-          <div className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1">
+          <Link href="/agendar" className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1 active:scale-[0.98] block focus:outline-none focus-visible:ring-2 focus-visible:ring-gold" aria-label="Solicitar orçamento de manutenção">
             <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
               <Wrench className="w-5 h-5" />
             </div>
             <h3 className="font-heading font-bold text-sm text-text-main">Manutenção</h3>
             <p className="text-[11px] text-text-muted">Preventiva e corretiva com diagnóstico</p>
-          </div>
+          </Link>
 
-          <div className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1">
-            <div className="w-10 h-10 mx-auto rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="font-heading font-bold text-sm text-text-main">Segurança</h3>
-            <p className="text-[11px] text-text-muted">Padrão CEMIG e quadros de disjuntores</p>
-          </div>
+          <SegurancaInfoCard />
         </section>
 
         {/* TABELA OFICIAL DE SERVIÇOS E PREÇOS */}
