@@ -38,7 +38,60 @@ export function calcularValidadeBR(baseDate: Date = new Date(), dias: number = 1
  * com a nova logo inteira no topo, sem imagem ilustrativa, "SEM FOTO" em vermelho
  * quando não houver foto anexada no item, e paginação limpa sem folhas em branco.
  */
-export function gerarHTMLPropostaComercial(dados: DadosPropostaPDF, originUrl: string): string {
+/** Escapa HTML para impedir que texto digitado (cliente/admin) injete código na janela do PDF */
+function esc(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Só aceita fotos em data:image base64 ou https; qualquer outra coisa vira "SEM FOTO" */
+function fotoSegura(url?: string | null): string | null {
+  if (!url) return null;
+  const u = url.trim();
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(u)) return u;
+  if (/^https:\/\/[^\s"'<>]+$/.test(u)) return u;
+  return null;
+}
+
+function sanitizarDados(d: DadosPropostaPDF): DadosPropostaPDF {
+  const t = (v?: string | null) => (v == null ? v : esc(v));
+  return {
+    ...d,
+    numeroPedido: d.numeroPedido ? esc(d.numeroPedido) : d.numeroPedido,
+    clienteNome: esc(d.clienteNome),
+    clienteLocalidade: t(d.clienteLocalidade),
+    clienteWhatsapp: t(d.clienteWhatsapp),
+    dataProposta: d.dataProposta ? esc(d.dataProposta) : d.dataProposta,
+    validadeProposta: d.validadeProposta ? esc(d.validadeProposta) : d.validadeProposta,
+    subtitulo: t(d.subtitulo),
+    objetivo: t(d.objetivo),
+    condicoesPagamento: t(d.condicoesPagamento),
+    observacaoValores: t(d.observacaoValores),
+    observacaoCliente: t(d.observacaoCliente),
+    valorTotal: Number(d.valorTotal) || 0,
+    desconto: d.desconto == null ? d.desconto : Number(d.desconto) || 0,
+    itens: (d.itens || []).map((it) => ({
+      ...it,
+      numero: esc(it.numero),
+      identificacao: esc(it.identificacao),
+      servicoNome: esc(it.servicoNome),
+      escopo: esc(it.escopo),
+      descricao: esc(it.descricao),
+      quantidade: Number(it.quantidade) || 1,
+      valorUnitario: Number(it.valorUnitario) || 0,
+      valorTotal: Number(it.valorTotal) || 0,
+      fotoUrl: fotoSegura(it.fotoUrl),
+      icone: it.icone ? esc(it.icone) : it.icone,
+    })),
+  };
+}
+
+export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, originUrl: string): string {
+  const dados = sanitizarDados(dadosBrutos);
   const hoje = new Date();
   const dataProposta = dados.dataProposta || formatarDataBR(hoje);
   const validadeProposta = dados.validadeProposta || calcularValidadeBR(hoje, 10);

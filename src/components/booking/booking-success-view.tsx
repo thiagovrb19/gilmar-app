@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
   Calendar,
@@ -33,6 +34,7 @@ import {
 } from "@/lib/whatsapp";
 import { abrirPropostaPDF, formatarDataBR, calcularValidadeBR } from "@/lib/pdf/proposta-pdf";
 import { toast } from "sonner";
+import { PropostaEditorModal } from "@/components/proposta/proposta-editor-modal";
 
 interface BookingSuccessViewProps {
   agendamentoId: string;
@@ -66,6 +68,8 @@ export function BookingSuccessView({
   resumo,
   anexosCount = 0,
 }: BookingSuccessViewProps) {
+  const router = useRouter();
+  const [editandoProposta, setEditandoProposta] = useState(false);
   const [showPix, setShowPix] = useState(false);
   const [appLink, setAppLink] = useState<string>("");
   const [pdfGerado, setPdfGerado] = useState(false);
@@ -310,6 +314,38 @@ export function BookingSuccessView({
             <FileText className="w-4 h-4" />
             <span>{pdfGerado ? "Baixar / Imprimir Orçamento em PDF Novamente" : "1º Gerar Orçamento Completo em PDF"}</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setEditandoProposta(true)}
+            className="w-full inline-flex items-center justify-center gap-2.5 bg-surface-2 hover:bg-surface-3 text-gold border border-border-gold/40 font-bold text-sm py-3 px-5 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Editar textos da proposta antes de gerar o PDF</span>
+          </button>
+
+          {editandoProposta && (
+            <PropostaEditorModal
+              open
+              modo="cliente"
+              agendamentoId={agendamentoId || undefined}
+              numeroPedido={pedidoNum}
+              onClose={() => setEditandoProposta(false)}
+              onSaved={() => {
+                setEditandoProposta(false);
+                router.refresh();
+              }}
+              inicial={{
+                clienteNome: resumo?.clienteNome || "Cliente",
+                clienteLocalidade: resumo?.clienteLocalidade || "Visconde do Rio Branco - MG",
+                subtitulo: resumo?.propostaSubtitulo || "",
+                objetivo: resumo?.propostaObjetivo || "",
+                condicoesPagamento: resumo?.propostaCondicoesPagamento || "",
+                observacaoCliente: resumo?.observacao || "",
+                itens: itensProposta,
+              }}
+            />
+          )}
 
           <a
             href={whatsAppLink}
