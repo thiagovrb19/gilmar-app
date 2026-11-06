@@ -1,6 +1,6 @@
 import React from "react";
 import { AdminServicesView } from "@/components/admin/admin-services-view";
-import { getServicos } from "@/actions/booking";
+import { getServicosAdmin } from "@/actions/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export const metadata = {
 };
 
 export default async function AdminServicosPage() {
-  const servicos = await getServicos(false);
+  const servicos = await getServicosAdmin();
 
   return (
     <div className="w-full">
