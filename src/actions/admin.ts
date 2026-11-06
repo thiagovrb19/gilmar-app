@@ -1372,6 +1372,33 @@ export async function salvarServicoAction(
   }
 }
 
+/**
+ * Lista TODOS os serviços (ativos e desativados) para o painel do admin.
+ * Usa a service_role porque o RLS só mostra serviços ativos para quem não é admin do Supabase
+ * (o login do painel é por cookie, não por Supabase Auth) - por isso os desativados "sumiam".
+ */
+export async function getServicosAdmin(): Promise<Servico[]> {
+  await requireAdmin();
+
+  if (!isSupabaseConfigured()) {
+    const { loadStore, DEMO_SERVICOS_STATIC } = await import("@/lib/mock-store");
+    const store = loadStore();
+    return store.servicos && store.servicos.length > 0 ? store.servicos : DEMO_SERVICOS_STATIC;
+  }
+
+  const { data, error } = await createAdminClient()
+    .from("servicos")
+    .select("*")
+    .order("ordem", { ascending: true })
+    .order("nome", { ascending: true });
+
+  if (error) {
+    console.error("Erro ao listar serviços (admin):", error);
+    return [];
+  }
+  return (data || []) as Servico[];
+}
+
 /** 16.1 Excluir Serviço (Admin) */
 export async function excluirServicoAction(id: string): Promise<{ success: boolean; error?: string }> {
   try {
