@@ -74,7 +74,7 @@ export default async function HomePage() {
             </h1>
 
             <p className="text-sm sm:text-base text-text-muted leading-relaxed">
-              Serviços elétricos profissionais com segurança, qualidade e confiança. Atendimento especializado em Visconde do Rio Branco e região pelo eletricista <strong>Gilmar Sales</strong>.
+              Serviços elétricos profissionais com segurança, qualidade e confiança. Atendimento especializado em Visconde do Rio Branco e região pelo eletromecânico. <strong>Gilmar Sales</strong>.
             </p>
 
             {/* Destaque do recurso de anexar fotos */}
