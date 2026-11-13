@@ -14,6 +14,9 @@ import {
   ExternalLink,
   Printer,
   Pencil,
+  Camera,
+  ClipboardCheck,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Agendamento } from "@/lib/supabase/types";
@@ -24,6 +27,9 @@ import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { numeroDoPedido } from "@/lib/whatsapp";
 import { abrirPropostaPDF } from "@/lib/pdf/proposta-pdf";
 import { PropostaEditorModal } from "@/components/proposta/proposta-editor-modal";
+import { RelatorioEditorModal } from "@/components/relatorio/relatorio-editor-modal";
+import { definirFotoItemPropostaAction } from "@/actions/booking";
+import { comprimirImagem } from "@/lib/imagem/comprimir";
 
 interface AdminAppointmentDetailModalProps {
   agendamento: Agendamento | null;
@@ -37,11 +43,43 @@ export function AdminAppointmentDetailModal({
   onRefresh,
 }: AdminAppointmentDetailModalProps) {
   const [editandoProposta, setEditandoProposta] = useState(false);
+  const [relatorioAberto, setRelatorioAberto] = useState(false);
+  // Fotos trocadas aqui no modal (chave "<agendamento>:<índice>"): o objeto `agendamento`
+  // vem da tela de trás e só é atualizado quando ela recarrega.
+  const [fotosLocais, setFotosLocais] = useState<Record<string, string | null>>({});
+  const [salvandoFoto, setSalvandoFoto] = useState<number | null>(null);
+  const [versaoGaleria, setVersaoGaleria] = useState(0);
   if (!agendamento) return null;
 
+  const chaveFoto = (idx: number) => `${agendamento.id}:${idx}`;
+  const itensSalvos = (agendamento.proposta_itens_json || []).map((it, idx) =>
+    chaveFoto(idx) in fotosLocais ? { ...it, fotoUrl: fotosLocais[chaveFoto(idx)] } : it
+  );
+
+  const trocarFotoItem = async (idx: number, file: File | null | undefined) => {
+    if (!file) return;
+    setSalvandoFoto(idx);
+    try {
+      const { dataUrl } = await comprimirImagem(file, { maxDim: 1000, qualidade: 0.78, maxBytes: 280 * 1024 });
+      const res = await definirFotoItemPropostaAction({ agendamentoId: agendamento.id, indice: idx, foto: dataUrl });
+      if (!res.success) {
+        toast.error(res.error || "Não foi possível salvar a foto.");
+        return;
+      }
+      setFotosLocais((prev) => ({ ...prev, [chaveFoto(idx)]: dataUrl }));
+      setVersaoGaleria((v) => v + 1);
+      toast.success("Foto adicionada ao item da proposta!");
+      onRefresh?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível salvar a foto.");
+    } finally {
+      setSalvandoFoto(null);
+    }
+  };
+
   const itensParaEditar = (
-    agendamento.proposta_itens_json && agendamento.proposta_itens_json.length > 0
-      ? agendamento.proposta_itens_json
+    itensSalvos.length > 0
+      ? itensSalvos
       : (agendamento.servicos || []).map((s, idx) => ({
           numero: String(idx + 1).padStart(2, "0"),
           identificacao: `Item ${String(idx + 1).padStart(2, "0")}`,
@@ -226,13 +264,13 @@ export function AdminAppointmentDetailModal({
           </div>
         )}
 
-        {agendamento.proposta_itens_json && agendamento.proposta_itens_json.length > 0 ? (
+        {itensSalvos.length > 0 ? (
           <div className="space-y-2">
             <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Escopo Detalhado da Proposta ({agendamento.proposta_itens_json.length} {agendamento.proposta_itens_json.length === 1 ? "item" : "itens"})
+              Escopo Detalhado da Proposta ({itensSalvos.length} {itensSalvos.length === 1 ? "item" : "itens"})
             </h4>
             <div className="space-y-2">
-              {agendamento.proposta_itens_json.map((item, idx) => (
+              {itensSalvos.map((item, idx) => (
                 <div
                   key={idx}
                   className="bg-surface-2/60 border border-border-subtle rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
@@ -271,6 +309,29 @@ export function AdminAppointmentDetailModal({
                       <span className="text-[10px] text-text-muted block">
                         Qtd: <strong>{item.quantidade}</strong> &bull; Unitário: <strong>{formatCurrency(item.valorUnitario)}</strong>
                       </span>
+                      <label
+                        className={`inline-flex items-center gap-1.5 mt-1 bg-surface-1 hover:bg-surface-3 text-gold border border-border-gold/40 text-[11px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer ${
+                          salvandoFoto !== null ? "opacity-60 pointer-events-none" : ""
+                        }`}
+                      >
+                        {salvandoFoto === idx ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Camera className="w-3.5 h-3.5" />
+                        )}
+                        <span>{salvandoFoto === idx ? "Salvando..." : item.fotoUrl ? "Trocar foto" : "Adicionar foto"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          aria-label={`${item.fotoUrl ? "Trocar" : "Adicionar"} foto do item ${item.numero || String(idx + 1).padStart(2, "0")}`}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            void trocarFotoItem(idx, f);
+                          }}
+                        />
+                      </label>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -317,11 +378,17 @@ export function AdminAppointmentDetailModal({
           </div>
         )}
 
-        {/* SEÇÃO: IMAGENS ANEXADAS PELO CLIENTE */}
+        {/* SEÇÃO: IMAGENS DA SOLICITAÇÃO (cliente e admin) */}
         <div className="space-y-2 pt-1">
           <AdminAttachmentGallery
             agendamentoId={agendamento.id}
-            onAnexoRemovido={onRefresh}
+            refreshKey={versaoGaleria}
+            onAnexoRemovido={(anexoId) => {
+              // Foto de item da proposta removida pela galeria: reflete na lista de itens acima
+              const m = /^proposta-item-.+-(\d+)$/.exec(anexoId);
+              if (m) setFotosLocais((prev) => ({ ...prev, [chaveFoto(Number(m[1]))]: null }));
+              onRefresh?.();
+            }}
           />
         </div>
 
@@ -331,8 +398,8 @@ export function AdminAppointmentDetailModal({
             type="button"
             onClick={() => {
               const itensDetalhados =
-                agendamento.proposta_itens_json && agendamento.proposta_itens_json.length > 0
-                  ? agendamento.proposta_itens_json
+                itensSalvos.length > 0
+                  ? itensSalvos
                   : (agendamento.servicos || []).map((s, idx) => ({
                       numero: String(idx + 1).padStart(2, "0"),
                       identificacao: `Máquina / Ponto ${String(idx + 1).padStart(2, "0")}`,
@@ -378,7 +445,16 @@ export function AdminAppointmentDetailModal({
             className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors"
           >
             <Pencil className="w-4 h-4" />
-            <span>Editar Proposta</span>
+            <span>Editar Proposta e Fotos</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRelatorioAberto(true)}
+            className="inline-flex items-center gap-1.5 bg-success/15 hover:bg-success/25 text-success border border-success/40 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            <span>Relatório Antes e Depois</span>
           </button>
 
           <button
@@ -388,6 +464,27 @@ export function AdminAppointmentDetailModal({
           >
             Fechar Detalhes
           </button>
+
+          {relatorioAberto && (
+            <RelatorioEditorModal
+              agendamentoId={agendamento.id}
+              onClose={() => setRelatorioAberto(false)}
+              prefill={{
+                clienteId: agendamento.cliente_id,
+                clienteNome: agendamento.cliente?.nome || "",
+                clienteWhatsapp: agendamento.cliente?.whatsapp || "",
+                clienteLocalidade: agendamento.cliente_localidade || "",
+                titulo: (itensSalvos.length > 0
+                  ? itensSalvos.map((i) => i.servicoNome)
+                  : (agendamento.servicos || []).map((s) => s.nome)
+                )
+                  .filter(Boolean)
+                  .slice(0, 3)
+                  .join(" + "),
+                referencia: pedidoNum,
+              }}
+            />
+          )}
 
           {editandoProposta && (
             <PropostaEditorModal

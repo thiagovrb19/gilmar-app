@@ -1200,6 +1200,19 @@ export interface PropostaItemEditado {
   icone?: string;
   /** índice do item original cuja foto deve ser mantida (null = sem foto) */
   fotoDe?: number | null;
+  /** foto nova (JPEG/PNG/WebP comprimido em data URL) escolhida no editor; tem prioridade sobre `fotoDe` */
+  fotoNova?: string | null;
+}
+
+/** Tamanho máximo (em caracteres do data URL) de uma foto de item: ~500 KB de imagem */
+const FOTO_ITEM_MAX_CHARS = 700_000;
+
+/** Só aceita data URL de imagem comum e dentro do limite; qualquer outra coisa é descartada */
+function fotoItemValida(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const u = v.trim();
+  if (u.length === 0 || u.length > FOTO_ITEM_MAX_CHARS) return null;
+  return /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(u) ? u : null;
 }
 
 function limpar(v: unknown, max: number): string {
@@ -1262,6 +1275,14 @@ export async function salvarPropostaAction(params: {
       }
     }
 
+    const fotoRecusada = params.itens.findIndex((it) => !!it.fotoNova && !fotoItemValida(it.fotoNova));
+    if (fotoRecusada >= 0) {
+      return {
+        success: false,
+        error: `A foto do item ${String(fotoRecusada + 1).padStart(2, "0")} é inválida ou muito pesada. Escolha outra foto.`,
+      };
+    }
+
     const itensFinais: Existente[] = params.itens.map((it, idx) => {
       // Cliente: preço sempre vem do que já está salvo; Admin: vale o que ele digitou
       const original = isAdmin
@@ -1271,6 +1292,10 @@ export async function salvarPropostaAction(params: {
       const valorUnitario = isAdmin
         ? Math.min(10_000_000, Math.max(0, Number(it.valorUnitario) || 0))
         : Number(existentes[idx].valorUnitario) || 0;
+      // Foto: a nova (se enviada e válida) vence; senão mantém a do item original.
+      // `fotoDe: null` significa que a foto foi removida no editor.
+      const fotoNova = fotoItemValida(it.fotoNova);
+      const fotoMantida = it.fotoDe === null ? null : original?.fotoUrl ?? null;
       return {
         numero: String(idx + 1).padStart(2, "0"),
         identificacao: limpar(it.identificacao, 120) || `Item ${String(idx + 1).padStart(2, "0")}`,
@@ -1280,7 +1305,7 @@ export async function salvarPropostaAction(params: {
         quantidade,
         valorUnitario,
         valorTotal: Math.round(quantidade * valorUnitario * 100) / 100,
-        fotoUrl: original?.fotoUrl ?? null,
+        fotoUrl: fotoNova ?? fotoMantida,
         icone: it.icone || original?.icone,
       };
     });
@@ -1338,5 +1363,72 @@ export async function salvarPropostaAction(params: {
     return { success: true, valor_total: valorTotal };
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar a proposta." };
+  }
+}
+
+/**
+ * Define, troca ou remove a foto de UM item da proposta (somente admin).
+ * Usado pelos atalhos "Adicionar foto" do painel: uma foto por requisição.
+ */
+export async function definirFotoItemPropostaAction(params: {
+  agendamentoId: string;
+  indice: number;
+  /** data URL da nova foto, ou null para remover */
+  foto: string | null;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    if (user?.role !== "admin") {
+      return { success: false, error: "Apenas o administrador pode alterar as fotos por aqui." };
+    }
+
+    const idx = Math.floor(Number(params.indice));
+    if (!params.agendamentoId || !Number.isFinite(idx) || idx < 0) {
+      return { success: false, error: "Item da proposta inválido." };
+    }
+
+    let foto: string | null = null;
+    if (params.foto != null) {
+      foto = fotoItemValida(params.foto);
+      if (!foto) return { success: false, error: "Foto inválida ou muito pesada. Escolha outra foto." };
+    }
+
+    type Existente = import("@/lib/supabase/types").PropostaItemDetalhe;
+
+    if (!isSupabaseConfigured()) {
+      const { loadStore, saveStore } = await import("@/lib/mock-store");
+      const store = loadStore();
+      const ag = store.agendamentos.find((a) => a.id === params.agendamentoId);
+      const itens = (ag?.proposta_itens_json || []) as Existente[];
+      if (!ag || !itens[idx]) return { success: false, error: "Item da proposta não encontrado." };
+      ag.proposta_itens_json = itens.map((it, i) => (i === idx ? { ...it, fotoUrl: foto } : it));
+      saveStore(store);
+    } else {
+      const { createAdminClient } = await import("@/lib/supabase/admin");
+      const sb = createAdminClient();
+      const { data: ag, error: readErr } = await sb
+        .from("agendamentos")
+        .select("id, proposta_itens_json")
+        .eq("id", params.agendamentoId)
+        .maybeSingle();
+      if (readErr) return { success: false, error: readErr.message };
+      const itens = ((ag?.proposta_itens_json as Existente[] | null) || []) as Existente[];
+      if (!ag || !itens[idx]) return { success: false, error: "Item da proposta não encontrado." };
+      const novos = itens.map((it, i) => (i === idx ? { ...it, fotoUrl: foto } : it));
+      const { error } = await sb
+        .from("agendamentos")
+        .update({ proposta_itens_json: novos })
+        .eq("id", params.agendamentoId);
+      if (error) return { success: false, error: error.message };
+    }
+
+    revalidatePath("/admin/agenda");
+    revalidatePath("/admin");
+    revalidatePath("/admin/clientes");
+    revalidatePath("/meus-agendamentos");
+    revalidatePath("/agendamento/sucesso");
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Erro ao salvar a foto." };
   }
 }

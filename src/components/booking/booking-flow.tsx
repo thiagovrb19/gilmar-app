@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageAttachmentUploader, SelectedImage } from "./image-attachment-uploader";
+import { comprimirImagem } from "@/lib/imagem/comprimir";
 import { Servico, Configuracao, PropostaItemDetalhe } from "@/lib/supabase/types";
 import { getServiceIcon, IconWhatsApp } from "@/components/icons/barber-icons";
 import { optimizeServicesWithCombos } from "@/lib/combos";
@@ -252,56 +253,21 @@ export function BookingFlow({
     ]);
   };
 
-  // Lê e otimiza a foto anexada especificamente para um item do orçamento (mantida apenas no dispositivo do cliente para o PDF)
-  const handleSelectFotoItem = (idx: number, file: File | null) => {
+  // Lê e otimiza a foto anexada a um item do orçamento. A foto é sempre comprimida antes de seguir
+  // para o painel do Gilmar: se o navegador não conseguir abri-la, avisa o cliente em vez de
+  // enviar o arquivo original (que estouraria o limite de envio e deixaria a proposta sem foto).
+  const handleSelectFotoItem = async (idx: number, file: File | null) => {
     if (!file) {
       handleUpdatePropostaItem(idx, { fotoUrl: null });
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Selecione um arquivo de imagem válido (JPG, PNG ou WEBP).");
-      return;
+    try {
+      const { dataUrl } = await comprimirImagem(file, { maxDim: 1000, qualidade: 0.78, maxBytes: 280 * 1024 });
+      handleUpdatePropostaItem(idx, { fotoUrl: dataUrl });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível usar esta foto. Tente outra imagem.");
     }
-
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      if (!dataUrl) return;
-
-      // Redimensiona via canvas para manter o PDF e o envio para o painel do admin leves e rápidos
-      const img = new Image();
-      img.onload = () => {
-        const maxDim = 800;
-        let w = img.width;
-        let h = img.height;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) {
-            h = Math.round((h * maxDim) / w);
-            w = maxDim;
-          } else {
-            w = Math.round((w * maxDim) / h);
-            h = maxDim;
-          }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, w, h);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.78);
-          handleUpdatePropostaItem(idx, { fotoUrl: compressedDataUrl });
-        } else {
-          handleUpdatePropostaItem(idx, { fotoUrl: dataUrl });
-        }
-      };
-      img.onerror = () => {
-        handleUpdatePropostaItem(idx, { fotoUrl: dataUrl });
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleRemovePropostaItem = (idx: number) => {
@@ -539,7 +505,9 @@ export function BookingFlow({
       ...optimization.residualServices.map((s) => s.id),
     ];
 
-    const res = await criarAgendamentoAction({
+    let res: Awaited<ReturnType<typeof criarAgendamentoAction>>;
+    try {
+      res = await criarAgendamentoAction({
       servicosIds: serviceIdsToBook.length > 0 ? serviceIdsToBook : selectedServices.map((s) => s.id),
       inicio: selectedSlot.inicio,
       observacao,
@@ -556,7 +524,14 @@ export function BookingFlow({
         fotoUrl: it.fotoUrl || null,
       })),
       valorTotalOverride: totalPropostaCalculado,
-    });
+      });
+    } catch {
+      setIsSubmitting(false);
+      toast.error(
+        "Não foi possível enviar o orçamento. Verifique sua conexão; se anexou muitas fotos, remova algumas e tente novamente."
+      );
+      return;
+    }
 
     if (!res.success || !res.agendamento_id) {
       setIsSubmitting(false);
@@ -1296,12 +1271,12 @@ export function BookingFlow({
                         <span>{item.fotoUrl ? "Trocar Foto" : "Anexar Foto"}</span>
                         <input
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept="image/*"
                           className="hidden"
                           onChange={(e) => {
                             const file = e.target.files?.[0] || null;
                             if (file) {
-                              handleSelectFotoItem(idx, file);
+                              void handleSelectFotoItem(idx, file);
                             }
                             e.target.value = "";
                           }}
@@ -1311,7 +1286,7 @@ export function BookingFlow({
                       {item.fotoUrl && (
                         <button
                           type="button"
-                          onClick={() => handleSelectFotoItem(idx, null)}
+                          onClick={() => void handleSelectFotoItem(idx, null)}
                           className="inline-flex items-center gap-1 bg-surface-1 hover:bg-destructive/20 text-text-muted hover:text-destructive border border-border-subtle text-xs font-semibold px-2.5 py-2 rounded-xl transition-colors"
                           title="Remover foto deste item"
                         >

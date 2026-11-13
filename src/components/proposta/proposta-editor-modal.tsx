@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { FileText, Plus, Printer, Save, Trash2, X, RefreshCw, Lock } from "lucide-react";
+import { FileText, Plus, Printer, Save, Trash2, X, RefreshCw, Lock, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PropostaItemDetalhe } from "@/lib/supabase/types";
 import { formatCurrency } from "@/lib/formatters";
 import { abrirPropostaPDF, formatarDataBR, calcularValidadeBR } from "@/lib/pdf/proposta-pdf";
 import { salvarPropostaAction } from "@/actions/booking";
+import { comprimirImagem } from "@/lib/imagem/comprimir";
 
 export interface PropostaInicial {
   clienteNome: string;
@@ -32,7 +33,14 @@ interface Props {
   onSaved?: () => void;
 }
 
-type ItemEditavel = PropostaItemDetalhe & { fotoDe: number | null };
+/**
+ * fotoDe: índice do item original cuja foto já está salva (null = sem foto salva).
+ * fotoNova: true quando `fotoUrl` é uma foto recém-escolhida, ainda não salva.
+ */
+type ItemEditavel = PropostaItemDetalhe & { fotoDe: number | null; fotoNova?: boolean };
+
+/** Soma máxima das fotos novas em um único salvamento (o limite da requisição é 4 MB) */
+const MAX_CHARS_FOTOS_NOVAS = 3_300_000;
 
 const inputCls =
   "w-full bg-surface-1 border border-border-subtle rounded-lg px-2.5 py-1.5 text-xs text-text-main focus:outline-none focus:border-gold";
@@ -61,6 +69,7 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
     inicial.itens.map((it, i) => ({ ...it, fotoDe: i }))
   );
   const [salvando, setSalvando] = useState(false);
+  const [processandoFoto, setProcessandoFoto] = useState<number | null>(null);
 
   const total = useMemo(
     () => itens.reduce((acc, it) => acc + Math.max(1, it.quantidade) * Math.max(0, it.valorUnitario), 0),
@@ -107,6 +116,21 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
     setItens((prev) => prev.filter((_, i) => i !== idx).map((it, i) => ({ ...it, numero: String(i + 1).padStart(2, "0") })));
   };
 
+  const escolherFoto = async (idx: number, file: File | null | undefined) => {
+    if (!file) return;
+    setProcessandoFoto(idx);
+    try {
+      const { dataUrl } = await comprimirImagem(file, { maxDim: 1000, qualidade: 0.78, maxBytes: 280 * 1024 });
+      patchItem(idx, { fotoUrl: dataUrl, fotoNova: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível usar esta foto.");
+    } finally {
+      setProcessandoFoto(null);
+    }
+  };
+
+  const removerFoto = (idx: number) => patchItem(idx, { fotoUrl: null, fotoNova: false, fotoDe: null });
+
   const gerarPdf = () => {
     if (!clienteNome.trim()) {
       toast.error("Informe o nome do cliente.");
@@ -136,6 +160,11 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
 
   const salvar = async (): Promise<boolean> => {
     if (!agendamentoId) return true; // sem registro no banco: só gera o PDF
+    const pesoFotosNovas = itens.reduce((acc, it) => acc + (it.fotoNova && it.fotoUrl ? it.fotoUrl.length : 0), 0);
+    if (pesoFotosNovas > MAX_CHARS_FOTOS_NOVAS) {
+      toast.error("Muitas fotos novas de uma vez. Salve a proposta com parte das fotos e depois adicione as demais.");
+      return false;
+    }
     setSalvando(true);
     try {
       const res = await salvarPropostaAction({
@@ -155,7 +184,8 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
           quantidade: it.quantidade,
           valorUnitario: it.valorUnitario,
           icone: it.icone,
-          fotoDe: it.fotoDe,
+          fotoDe: it.fotoNova ? null : it.fotoDe,
+          fotoNova: it.fotoNova ? it.fotoUrl : null,
         })),
       });
       if (!res.success) {
@@ -165,6 +195,9 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
       toast.success("Alterações salvas na proposta!");
       onSaved?.();
       return true;
+    } catch {
+      toast.error("Não foi possível salvar. Verifique sua conexão e tente novamente.");
+      return false;
     } finally {
       setSalvando(false);
     }
@@ -186,8 +219,8 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
               <h2 className="font-heading font-bold text-base text-text-main truncate">Editar Proposta (PDF)</h2>
               <p className="text-[11px] text-text-muted">
                 {isAdmin
-                  ? "Altere textos, quantidades, valores e itens. As fotos permanecem."
-                  : "Altere os textos e quantidades. Os valores só o Gilmar pode alterar. As fotos permanecem."}
+                  ? "Altere textos, quantidades, valores, itens e as fotos de cada item."
+                  : "Altere os textos, quantidades e fotos. Os valores só o Gilmar pode alterar."}
               </p>
             </div>
           </div>
@@ -287,9 +320,69 @@ export function PropostaEditorModal({ open, onClose, modo, agendamentoId, numero
                   <label className={labelCls}>Detalhamento</label>
                   <textarea rows={2} className={`${inputCls} resize-none`} value={it.descricao} onChange={(e) => patchItem(idx, { descricao: e.target.value })} />
                 </div>
-                <p className="text-[10px] text-text-muted">
-                  {it.fotoUrl ? "📷 Foto mantida neste item." : "Sem foto neste item (sairá “SEM FOTO” no PDF)."}
-                </p>
+                {/* Foto do item: visualizar, adicionar, trocar ou remover */}
+                <div className="flex items-center gap-3 pt-1">
+                  {it.fotoUrl ? (
+                    <a
+                      href={it.fotoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-20 h-20 rounded-lg overflow-hidden border border-gold/50 bg-bg-base shrink-0 block"
+                      title="Clique para ampliar a foto"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={it.fotoUrl} alt={`Foto do ${it.identificacao}`} className="w-full h-full object-cover" />
+                    </a>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-red-500/10 border border-dashed border-red-500/40 flex items-center justify-center shrink-0">
+                      <span className="text-[9px] font-extrabold text-red-400 uppercase text-center px-1">Sem foto</span>
+                    </div>
+                  )}
+                  <div className="space-y-1.5 min-w-0">
+                    <p className="text-[10px] text-text-muted">
+                      {it.fotoUrl
+                        ? it.fotoNova
+                          ? "📷 Foto nova — será gravada ao salvar."
+                          : "📷 Foto deste item (aparece no PDF)."
+                        : "Sem foto neste item (sairá “SEM FOTO” no PDF)."}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label
+                        className={`inline-flex items-center gap-1.5 bg-surface-1 hover:bg-surface-3 text-gold border border-border-gold/40 text-[11px] font-bold px-3 py-2 rounded-lg cursor-pointer ${
+                          processandoFoto === idx ? "opacity-60 pointer-events-none" : ""
+                        }`}
+                      >
+                        {processandoFoto === idx ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Camera className="w-3.5 h-3.5" />
+                        )}
+                        <span>{it.fotoUrl ? "Trocar foto" : "Adicionar foto"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          aria-label={`${it.fotoUrl ? "Trocar" : "Adicionar"} foto do item ${String(idx + 1).padStart(2, "0")}`}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            void escolherFoto(idx, f);
+                          }}
+                        />
+                      </label>
+                      {it.fotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => removerFoto(idx)}
+                          className="inline-flex items-center gap-1.5 bg-surface-1 hover:bg-destructive/20 text-text-muted hover:text-destructive border border-border-subtle text-[11px] font-semibold px-3 py-2 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remover foto</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

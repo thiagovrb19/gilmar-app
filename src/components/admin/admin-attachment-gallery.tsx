@@ -19,12 +19,15 @@ import { getAnexosAgendamentoAction, excluirAnexoAction } from "@/actions/anexos
 interface AdminAttachmentGalleryProps {
   agendamentoId: string;
   initialAnexos?: AnexoVisualizacao[];
-  onAnexoRemovido?: () => void;
+  /** Mude este valor para forçar a galeria a recarregar (ex.: após o admin adicionar uma foto) */
+  refreshKey?: number;
+  onAnexoRemovido?: (anexoId: string) => void;
 }
 
 export function AdminAttachmentGallery({
   agendamentoId,
   initialAnexos,
+  refreshKey = 0,
   onAnexoRemovido,
 }: AdminAttachmentGalleryProps) {
   const [anexos, setAnexos] = useState<AnexoVisualizacao[]>(initialAnexos || []);
@@ -51,10 +54,11 @@ export function AdminAttachmentGallery({
   };
 
   useEffect(() => {
-    if (!initialAnexos) {
+    if (!initialAnexos || refreshKey > 0) {
       carregarAnexos();
     }
-  }, [agendamentoId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agendamentoId, refreshKey]);
 
   const handleExcluir = async (anexoId: string, nome: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,7 +72,7 @@ export function AdminAttachmentGallery({
       if (res.success) {
         toast.success("Imagem removida com sucesso!");
         setAnexos((prev) => prev.filter((a) => a.id !== anexoId));
-        if (onAnexoRemovido) onAnexoRemovido();
+        if (onAnexoRemovido) onAnexoRemovido(anexoId);
       } else {
         toast.error(res.error || "Erro ao excluir imagem.");
       }
@@ -91,12 +95,12 @@ export function AdminAttachmentGallery({
           </div>
           <div>
             <h4 className="font-heading text-sm font-bold text-text-main">
-              Imagens anexadas
+              Imagens da solicitação
             </h4>
             <span className="text-[10px] text-text-muted">
               {anexos.length === 1
-                ? "1 imagem anexada pelo cliente"
-                : `${anexos.length} imagens anexadas pelo cliente`}
+                ? "1 imagem (enviada pelo cliente ou adicionada por você)"
+                : `${anexos.length} imagens (enviadas pelo cliente ou adicionadas por você)`}
             </span>
           </div>
         </div>
@@ -125,7 +129,7 @@ export function AdminAttachmentGallery({
             Nenhuma imagem anexada
           </p>
           <p className="text-[11px] text-text-muted max-w-xs mx-auto">
-            O cliente não enviou fotos nesta solicitação. O orçamento pode ser elaborado normalmente pelo histórico e descrição do serviço.
+            O cliente não enviou fotos nesta solicitação. Para incluir as suas, use &ldquo;Adicionar foto&rdquo; em cada item ou o botão &ldquo;Editar Proposta e Fotos&rdquo;.
           </p>
         </div>
       ) : (

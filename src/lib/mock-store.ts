@@ -161,6 +161,7 @@ interface MockDataStore {
   servicos?: Servico[];
   anexos?: import("./supabase/types").AgendamentoAnexo[];
   estoquePecas?: EstoquePeca[];
+  relatorios?: import("./supabase/types").RelatorioServico[];
 }
 
 const STORE_PATH = path.join(process.cwd(), ".local-data", "mock-db.json");
@@ -270,7 +271,13 @@ function getInitialData(): MockDataStore {
 
 let memoryStore: MockDataStore | null = null;
 
+// O Next empacota Server Actions e rotas de API (/api/...) separadamente, e cada pacote teria
+// a sua própria cópia de `memoryStore`: o que uma gravava, a outra não via (e ainda sobrescrevia
+// o arquivo com dados antigos). Guardar a referência no globalThis faz todos usarem o mesmo objeto.
+const lojaGlobal = globalThis as unknown as { __gsMockStore?: MockDataStore | null };
+
 export function loadStore(): MockDataStore {
+  memoryStore = lojaGlobal.__gsMockStore ?? null;
   if (memoryStore) {
     if (!memoryStore.diasExcecao) memoryStore.diasExcecao = [];
     if (!memoryStore.bloqueios) memoryStore.bloqueios = [];
@@ -286,6 +293,7 @@ export function loadStore(): MockDataStore {
     if (fs.existsSync(STORE_PATH)) {
       const content = fs.readFileSync(STORE_PATH, "utf-8");
       memoryStore = JSON.parse(content);
+      lojaGlobal.__gsMockStore = memoryStore;
       if (memoryStore) {
         if (!memoryStore.diasExcecao) memoryStore.diasExcecao = [];
         if (!memoryStore.bloqueios) memoryStore.bloqueios = [];
@@ -309,6 +317,7 @@ export function loadStore(): MockDataStore {
 
 export function saveStore(data: MockDataStore) {
   memoryStore = data;
+  lojaGlobal.__gsMockStore = data;
   try {
     const dir = path.dirname(STORE_PATH);
     if (!fs.existsSync(dir)) {

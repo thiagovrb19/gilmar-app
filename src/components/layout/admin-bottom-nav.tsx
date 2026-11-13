@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Zap,
   Package,
+  ClipboardCheck,
   Settings,
   LogOut,
   X,
@@ -34,6 +35,7 @@ export function AdminBottomNav() {
   ];
 
   const isMoreActive =
+    pathname.startsWith("/admin/relatorios") ||
     pathname.startsWith("/admin/estoque") ||
     pathname.startsWith("/admin/servicos") ||
     pathname.startsWith("/admin/configuracoes");
@@ -65,6 +67,20 @@ export function AdminBottomNav() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            <Link
+              href="/admin/relatorios"
+              onClick={() => setMoreOpen(false)}
+              className="flex items-center gap-3.5 p-3 rounded-xl hover:bg-surface-2 transition-colors text-text-main"
+            >
+              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center text-gold">
+                <ClipboardCheck className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">Relatórios de Serviço</span>
+                <span className="text-xs text-text-muted">Fotos de antes e depois em PDF</span>
+              </div>
+            </Link>
 
             <Link
               href="/admin/estoque"

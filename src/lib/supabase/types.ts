@@ -145,6 +145,50 @@ export interface AnexoVisualizacao {
   url: string;
 }
 
+export type RelatorioFotoTipo = "antes" | "depois";
+
+/** Foto de um relatório como fica gravada (o arquivo vive no Storage; `path` é o caminho no bucket) */
+export interface RelatorioFoto {
+  id: string;
+  tipo: RelatorioFotoTipo;
+  legenda: string;
+  path: string;
+}
+
+/** Relatório de Serviço Executado (antes e depois), criado pelo admin */
+export interface RelatorioServico {
+  id: string;
+  agendamento_id: string | null;
+  cliente_id: string | null;
+  cliente_nome: string;
+  cliente_whatsapp: string | null;
+  cliente_localidade: string | null;
+  titulo: string;
+  descricao: string | null;
+  observacoes: string | null;
+  data_servico: string; // YYYY-MM-DD
+  fotos: RelatorioFoto[];
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Foto pronta para exibição, com URL temporária */
+export interface RelatorioFotoVisualizacao {
+  id: string;
+  tipo: RelatorioFotoTipo;
+  legenda: string;
+  url: string;
+}
+
+export interface RelatorioServicoDetalhe extends Omit<RelatorioServico, "fotos"> {
+  fotos: RelatorioFotoVisualizacao[];
+}
+
+export interface RelatorioServicoResumo extends Omit<RelatorioServico, "fotos"> {
+  qtd_antes: number;
+  qtd_depois: number;
+}
+
 export interface HorarioFuncionamento {
   dia_semana: number; // 0=Domingo, 1=Segunda, etc.
   abre: string; // "17:00:00"
