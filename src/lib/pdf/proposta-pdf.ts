@@ -39,7 +39,7 @@ export function calcularValidadeBR(baseDate: Date = new Date(), dias: number = 1
  * quando não houver foto anexada no item, e paginação limpa sem folhas em branco.
  */
 /** Escapa HTML para impedir que texto digitado (cliente/admin) injete código na janela do PDF */
-function esc(v: unknown): string {
+export function esc(v: unknown): string {
   return String(v ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -49,7 +49,7 @@ function esc(v: unknown): string {
 }
 
 /** Só aceita fotos em data:image base64 ou https; qualquer outra coisa vira "SEM FOTO" */
-function fotoSegura(url?: string | null): string | null {
+export function fotoSegura(url?: string | null): string | null {
   if (!url) return null;
   const u = url.trim();
   if (/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(u)) return u;

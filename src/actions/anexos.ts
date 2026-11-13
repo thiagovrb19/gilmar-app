@@ -182,6 +182,17 @@ export async function excluirAnexoAction(
       return { success: false, error: "Apenas administradores podem remover anexos." };
     }
 
+    // Fotos que vivem dentro dos itens da proposta têm id "proposta-item-<agendamento>-<índice>"
+    const fotoDeItem = /^proposta-item-(.+)-(\d+)$/.exec(anexoId || "");
+    if (fotoDeItem) {
+      const { definirFotoItemPropostaAction } = await import("./booking");
+      return definirFotoItemPropostaAction({
+        agendamentoId: fotoDeItem[1],
+        indice: Number(fotoDeItem[2]),
+        foto: null,
+      });
+    }
+
     if (!isSupabaseConfigured()) {
       const { mockExcluirAnexo } = await import("@/lib/mock-store");
       mockExcluirAnexo(anexoId);

@@ -126,6 +126,8 @@ Para configurar uma nova instância do banco no Supabase, acesse o **SQL Editor*
    - Tabela de exceções de calendário (bloqueio de datas específicas e feriados).
 5. **`supabase/migrations/005_anexos_orcamento.sql`**:
    - Tabela `orcamento_anexos` e criação das políticas de armazenamento para o bucket `orcamento-anexos`.
+6. **`supabase/migrations/010_relatorios_servico.sql`**:
+   - Tabela `relatorios_servico` e bucket privado `relatorios-servico` usados pela aba **Relatórios (Antes e Depois)** do painel admin. Sem ela, a aba mostra um aviso pedindo para rodar este arquivo; o restante do sistema funciona normalmente.
 
 > 💡 **Script Consolidado:** O arquivo `supabase/fix_horarios_e_servicos.sql` contém a consolidação dos serviços de elétrica e horários da semana atualizados para rápida aplicação.
 
