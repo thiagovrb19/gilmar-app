@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "node scripts/test-corrections.mjs",
     "test:corrections": "node scripts/test-corrections.mjs",
-    "test:pix": "node --experimental-strip-types scripts/test-pix.mjs"
+    "test:pix": "node --experimental-strip-types scripts/test-pix.mjs && node --experimental-strip-types scripts/test-pix-chave.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

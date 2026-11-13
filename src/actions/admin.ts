@@ -1262,23 +1262,76 @@ export async function atualizarStatusMultaAction(
 }
 
 /** 15. Salvar Configurações Gerais */
-export async function salvarConfiguracoesAction(novasConfigs: Partial<Configuracao>) {
+export async function salvarConfiguracoesAction(
+  novasConfigs: Partial<Configuracao>
+): Promise<{ success: boolean; error?: string; aviso?: string }> {
   await requireAdmin();
-  if (!isSupabaseConfigured()) return { success: true };
+
+  const {
+    ehTipoChavePix,
+    inferirTipoChavePix,
+    normalizarChavePix,
+    validarChavePix,
+    qrImagemValida,
+  } = await import("@/lib/pix/chave");
+
+  const dados: Partial<Configuracao> = { ...novasConfigs };
+
+  // Chave Pix: valida conforme o tipo e grava já no formato usado no QR Code
+  if (dados.pix_chave !== undefined) {
+    const tipo = ehTipoChavePix(dados.pix_tipo_chave)
+      ? dados.pix_tipo_chave
+      : inferirTipoChavePix(dados.pix_chave || "");
+    const erroChave = validarChavePix(tipo, dados.pix_chave || "");
+    if (erroChave) return { success: false, error: `Chave Pix: ${erroChave}` };
+    dados.pix_tipo_chave = tipo;
+    dados.pix_chave = normalizarChavePix(tipo, dados.pix_chave || "");
+  }
+
+  // Imagem do QR Code do banco: opcional; string vazia ou null remove
+  if (dados.pix_qr_imagem !== undefined) {
+    if (!dados.pix_qr_imagem) {
+      dados.pix_qr_imagem = null;
+    } else if (!qrImagemValida(dados.pix_qr_imagem)) {
+      return { success: false, error: "A imagem do QR Code é inválida ou muito pesada. Envie outra imagem." };
+    }
+  }
+
+  if (!isSupabaseConfigured()) {
+    const { loadStore, saveStore } = await import("@/lib/mock-store");
+    const store = loadStore();
+    store.config = { ...(store.config || {}), ...dados };
+    saveStore(store);
+    revalidatePath("/admin/configuracoes");
+    return { success: true };
+  }
 
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("configuracoes")
-    .update({
-      ...novasConfigs,
-      atualizado_em: new Date().toISOString(),
-    })
-    .eq("id", 1);
+  const gravar = (payload: Partial<Configuracao>) =>
+    supabase
+      .from("configuracoes")
+      .update({ ...payload, atualizado_em: new Date().toISOString() })
+      .eq("id", 1);
+
+  let aviso: string | undefined;
+  let { error } = await gravar(dados);
+
+  // Banco ainda sem as colunas da migration 011: salva o restante e avisa
+  if (error && /pix_tipo_chave|pix_qr_imagem/.test(error.message || "")) {
+    const semNovos: Partial<Configuracao> = { ...dados };
+    delete semNovos.pix_tipo_chave;
+    delete semNovos.pix_qr_imagem;
+    ({ error } = await gravar(semNovos));
+    aviso =
+      "Configurações salvas, mas o tipo da chave e a imagem do QR Code só serão gravados depois de rodar o arquivo supabase/migrations/011_pix_tipo_chave_e_qrcode.sql no Supabase.";
+  }
 
   if (error) return { success: false, error: error.message };
   revalidatePath("/admin/configuracoes");
   revalidatePath("/agendar");
-  return { success: true };
+  revalidatePath("/meus-agendamentos");
+  revalidatePath("/agendamento/sucesso");
+  return { success: true, aviso };
 }
 
 /** 16. Salvar Serviço (Criar/Editar) */

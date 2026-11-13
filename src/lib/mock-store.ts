@@ -162,6 +162,7 @@ interface MockDataStore {
   anexos?: import("./supabase/types").AgendamentoAnexo[];
   estoquePecas?: EstoquePeca[];
   relatorios?: import("./supabase/types").RelatorioServico[];
+  config?: Partial<import("./supabase/types").Configuracao>;
 }
 
 const STORE_PATH = path.join(process.cwd(), ".local-data", "mock-db.json");

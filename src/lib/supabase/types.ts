@@ -292,8 +292,12 @@ export interface Configuracao {
   link_maps: string | null;
   instagram: string | null;
   pix_chave: string;
+  /** Tipo da chave Pix (migration 011). Ausente em bancos antigos: é deduzido do formato da chave. */
+  pix_tipo_chave?: import("@/lib/pix/chave").PixTipoChave | null;
   pix_nome: string;
   pix_cidade: string;
+  /** Imagem do QR Code fornecida pelo banco, em data URL (opcional, migration 011) */
+  pix_qr_imagem?: string | null;
   duracao_horario_min: number;
   antecedencia_minima_horas: number;
   janela_dias: number;
