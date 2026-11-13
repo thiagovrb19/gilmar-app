@@ -422,6 +422,8 @@ export function BookingSuccessView({
             <PixDisplay
               valor={valorTotal}
               chave={config.pix_chave}
+              tipoChave={config.pix_tipo_chave}
+              qrImagem={config.pix_qr_imagem}
               nomeRecebedor={config.pix_nome}
               cidade={config.pix_cidade}
               descricao="O pagamento pode ser acertado diretamente com o Gilmar após a vistoria."

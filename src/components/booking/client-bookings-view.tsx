@@ -183,6 +183,8 @@ export function ClientBookingsView({
             <PixDisplay
               valor={selectedMultaPix.valor}
               chave={config.pix_chave}
+              tipoChave={config.pix_tipo_chave}
+              qrImagem={config.pix_qr_imagem}
               nomeRecebedor={config.pix_nome}
               cidade={config.pix_cidade}
               descricao="Após o pagamento, o Gilmar dará baixa manual no sistema."

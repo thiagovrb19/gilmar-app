@@ -12,7 +12,13 @@ import {
   DollarSign,
   MapPin,
   Check,
+  QrCode,
+  Upload,
+  Trash2,
 } from "lucide-react";
+import { PixDisplay } from "@/components/pix/pix-display";
+import { PIX_TIPOS_CHAVE, PixTipoChave, inferirTipoChavePix, validarChavePix } from "@/lib/pix/chave";
+import { comprimirImagem } from "@/lib/imagem/comprimir";
 import { toast } from "sonner";
 import { Configuracao, Servico, HorarioFuncionamento } from "@/lib/supabase/types";
 import {
@@ -67,6 +73,26 @@ export function AdminSettingsView({
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [enviandoQr, setEnviandoQr] = useState(false);
+
+  // Pix: tipo da chave (deduzido quando o banco ainda não tem a coluna) e validação ao digitar
+  const tipoPix: PixTipoChave = config.pix_tipo_chave || inferirTipoChavePix(config.pix_chave || "");
+  const infoTipoPix = PIX_TIPOS_CHAVE.find((t) => t.valor === tipoPix) || PIX_TIPOS_CHAVE[0];
+  const erroChavePix = validarChavePix(tipoPix, config.pix_chave || "");
+
+  const escolherQrDoBanco = async (file: File | null | undefined) => {
+    if (!file) return;
+    setEnviandoQr(true);
+    try {
+      const { dataUrl } = await comprimirImagem(file, { maxDim: 700, qualidade: 0.9, maxBytes: 220 * 1024 });
+      setConfig((prev) => ({ ...prev, pix_qr_imagem: dataUrl }));
+      toast.success("Imagem carregada. Clique em Salvar Alterações para gravar.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível usar esta imagem.");
+    } finally {
+      setEnviandoQr(false);
+    }
+  };
 
   const updateHorario = (
     dia_semana: number,
@@ -90,10 +116,15 @@ export function AdminSettingsView({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (erroChavePix) {
+      toast.error(`Chave Pix: ${erroChavePix}`);
+      document.getElementById("pix-chave")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     setIsSaving(true);
 
     const [resConfig, resHorarios] = await Promise.all([
-      salvarConfiguracoesAction(config),
+      salvarConfiguracoesAction({ ...config, pix_tipo_chave: tipoPix, pix_qr_imagem: config.pix_qr_imagem ?? null }),
       salvarHorariosFuncionamentoAction(horarios),
     ]);
     setIsSaving(false);
@@ -108,7 +139,11 @@ export function AdminSettingsView({
       return;
     }
 
-    toast.success("Configurações e horários de funcionamento salvos com sucesso!");
+    if (resConfig.aviso) {
+      toast.warning(resConfig.aviso, { duration: 12000 });
+    } else {
+      toast.success("Configurações e horários de funcionamento salvos com sucesso!");
+    }
     router.refresh();
   };
 
@@ -209,17 +244,45 @@ export function AdminSettingsView({
           <span>2. Configurações do Pix (BR Code EMV)</span>
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="text-text-muted block mb-1">Chave Pix (Celular no padrão +55):</label>
+            <label htmlFor="pix-tipo" className="text-text-muted block mb-1">Tipo da chave Pix:</label>
+            <select
+              id="pix-tipo"
+              value={tipoPix}
+              onChange={(e) => setConfig({ ...config, pix_tipo_chave: e.target.value as PixTipoChave })}
+              className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
+            >
+              {PIX_TIPOS_CHAVE.map((t) => (
+                <option key={t.valor} value={t.valor}>
+                  {t.rotulo}
+                </option>
+              ))}
+            </select>
+            <span className="text-[10px] text-text-muted block mt-1">
+              Escolha o mesmo tipo de chave cadastrado no seu banco.
+            </span>
+          </div>
+
+          <div>
+            <label htmlFor="pix-chave" className="text-text-muted block mb-1">
+              Chave Pix ({infoTipoPix.rotulo}):
+            </label>
             <input
+              id="pix-chave"
               type="text"
               required
               value={config.pix_chave}
               onChange={(e) => setConfig({ ...config, pix_chave: e.target.value })}
-              className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
+              placeholder={infoTipoPix.exemplo}
+              aria-invalid={Boolean(erroChavePix)}
+              className={`w-full bg-surface-2 border rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold ${
+                erroChavePix ? "border-destructive" : "border-border-subtle"
+              }`}
             />
-            <span className="text-[10px] text-text-muted block mt-1">Ex: +5532999311712</span>
+            <span className={`text-[10px] block mt-1 ${erroChavePix ? "text-destructive" : "text-text-muted"}`}>
+              {erroChavePix || infoTipoPix.dica}
+            </span>
           </div>
 
           <div>
@@ -231,7 +294,9 @@ export function AdminSettingsView({
               onChange={(e) => setConfig({ ...config, pix_nome: e.target.value })}
               className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
             />
-            <span className="text-[10px] text-text-muted block mt-1">GILMAR SALES</span>
+            <span className="text-[10px] text-text-muted block mt-1">
+              Igual ao nome que aparece no banco. Ex: GILMAR SOUZA SALES
+            </span>
           </div>
 
           <div>
@@ -245,6 +310,88 @@ export function AdminSettingsView({
               className="w-full bg-surface-2 border border-border-subtle rounded-xl p-2.5 text-text-main focus:outline-none focus:border-gold"
             />
             <span className="text-[10px] text-text-muted block mt-1">Ex: VISCONDE DO RIO BRANCO</span>
+          </div>
+        </div>
+
+        {/* QR Code do banco (opcional) + pré-visualização do que o cliente vê */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-border-subtle text-xs">
+          <div className="space-y-3">
+            <div>
+              <h3 className="font-heading text-sm font-bold text-text-main flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-gold" />
+                <span>QR Code do seu banco (opcional)</span>
+              </h3>
+              <p className="text-text-muted mt-1 leading-relaxed">
+                O sistema já gera um QR Code automático com a chave acima e o valor do serviço preenchido.
+                Se quiser, envie também a imagem do QR Code do app do seu banco: o cliente poderá escolher qual usar.
+              </p>
+            </div>
+
+            {config.pix_qr_imagem ? (
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={config.pix_qr_imagem}
+                  alt="QR Code do banco enviado"
+                  className="w-28 h-28 object-contain bg-white rounded-xl border-2 border-gold/40 p-1.5 shrink-0"
+                />
+                <div className="space-y-2">
+                  <p className="text-text-main font-semibold">QR Code do banco cadastrado.</p>
+                  <button
+                    type="button"
+                    onClick={() => setConfig({ ...config, pix_qr_imagem: null })}
+                    className="inline-flex items-center gap-1.5 bg-surface-2 hover:bg-destructive/20 text-text-muted hover:text-destructive border border-border-subtle font-semibold px-3 py-2 rounded-lg"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Remover imagem</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-text-muted bg-surface-2/50 border border-dashed border-border-subtle rounded-xl p-3">
+                Nenhuma imagem enviada. O cliente vê apenas o QR Code automático.
+              </p>
+            )}
+
+            <label
+              className={`inline-flex items-center gap-2 bg-surface-2 hover:bg-surface-3 text-gold border border-border-gold/40 font-bold px-3.5 py-2.5 rounded-xl cursor-pointer ${
+                enviandoQr ? "opacity-60 pointer-events-none" : ""
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              <span>{enviandoQr ? "Processando..." : config.pix_qr_imagem ? "Trocar imagem do QR Code" : "Enviar imagem do QR Code"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                aria-label="Enviar imagem do QR Code do banco"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  void escolherQrDoBanco(f);
+                }}
+              />
+            </label>
+            <p className="text-[10px] text-text-muted">
+              Dica: recorte a imagem deixando só o QR Code. Lembre de clicar em &ldquo;Salvar Alterações&rdquo; depois.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="font-heading text-sm font-bold text-text-main">Como o cliente vê</h3>
+            {erroChavePix ? (
+              <p className="text-destructive bg-destructive/10 border border-destructive/40 rounded-xl p-3">
+                Corrija a chave Pix para ver a pré-visualização.
+              </p>
+            ) : (
+              <PixDisplay
+                chave={config.pix_chave}
+                tipoChave={tipoPix}
+                nomeRecebedor={config.pix_nome}
+                cidade={config.pix_cidade}
+                qrImagem={config.pix_qr_imagem}
+              />
+            )}
           </div>
         </div>
       </div>

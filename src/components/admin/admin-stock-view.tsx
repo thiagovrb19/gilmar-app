@@ -10,6 +10,7 @@ import {
   TrendingUp,
   AlertTriangle,
   Edit2,
+  Copy,
   Trash2,
   Download,
   Printer,
@@ -48,6 +49,7 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
   // Estados de edição / criação
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPeca, setEditingPeca] = useState<Partial<EstoquePeca> | null>(null);
+  const [duplicandoDe, setDuplicandoDe] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -203,6 +205,7 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
 
   // Abrir modal para criar ou editar peça
   const handleOpenModal = (peca?: EstoquePeca) => {
+    setDuplicandoDe(null);
     if (peca) {
       setEditingPeca({ ...peca });
     } else {
@@ -217,6 +220,23 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
         ordem: pecas.length + 1,
       });
     }
+    setModalOpen(true);
+  };
+
+  // Duplicar: abre o formulário preenchido com os dados do item para cadastrar uma variação
+  // (ex.: CONTATORA 7 A, CONTATORA 9 A, TOMADA MACHO 10 A / 20 A, BARRA DE COBRE 10 MM)
+  const handleDuplicate = (peca: EstoquePeca) => {
+    setEditingPeca({
+      nome: peca.nome,
+      categoria: peca.categoria,
+      valor_unitario: peca.valor_unitario,
+      quantidade: 1,
+      estoque_minimo: peca.estoque_minimo,
+      unidade: peca.unidade,
+      observacao: "",
+      ordem: pecas.length + 1,
+    });
+    setDuplicandoDe(peca.nome);
     setModalOpen(true);
   };
 
@@ -660,6 +680,14 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
 
       {/* TABELA ESTILO PLANILHA GILMAR.XLSX */}
       <div className="bg-surface-1 border border-border-subtle rounded-2xl overflow-hidden shadow-xl">
+        <p className="px-4 py-2.5 text-[11px] text-text-muted border-b border-border-subtle bg-surface-2/40 flex items-start gap-1.5">
+          <Edit2 className="w-3.5 h-3.5 text-gold shrink-0 mt-0.5" />
+          <span>
+            <strong className="text-text-main">Toque no nome de um item para editar</strong> (nome, amperagem ou medida, categoria, valor e
+            estoque). Para cadastrar outro modelo do mesmo material, use <strong className="text-text-main">Duplicar</strong> e troque só o que muda
+            &mdash; ex.: CONTATORA 7 A, CONTATORA 9 A, TOMADA MACHO 20 A.
+          </span>
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -670,7 +698,7 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
                 <th className="py-3.5 px-4 text-right">VALOR (R$)</th>
                 <th className="py-3.5 px-4 text-center">ESTOQUE</th>
                 <th className="py-3.5 px-4 text-right">RECEITA (Valor × Estoque)</th>
-                <th className="py-3.5 px-4 text-center w-28">Ações</th>
+                <th className="py-3.5 px-4 text-center w-44">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle text-xs">
@@ -717,9 +745,15 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
 
                       {/* ITEM */}
                       <td className="py-3 px-4">
-                        <div className="font-bold text-text-main text-xs sm:text-sm tracking-tight">
-                          {peca.nome}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenModal(peca)}
+                          title="Editar nome, amperagem/medida, valor e estoque deste item"
+                          className="group inline-flex items-center gap-1.5 text-left font-bold text-text-main hover:text-gold text-xs sm:text-sm tracking-tight transition-colors"
+                        >
+                          <span>{peca.nome}</span>
+                          <Edit2 className="w-3 h-3 shrink-0 text-gold/70 group-hover:text-gold" />
+                        </button>
                         <div className="flex items-center gap-2 mt-0.5 md:hidden">
                           <span className="text-[10px] text-text-muted bg-surface-2 px-2 py-0.5 rounded">
                             {peca.categoria || "Material Elétrico"}
@@ -841,10 +875,20 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
                             <button
                               type="button"
                               onClick={() => handleOpenModal(peca)}
-                              className="p-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-gold border border-border-subtle transition-colors"
-                              title="Editar peça completa"
+                              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 text-[11px] font-bold transition-colors"
+                              title="Editar nome, categoria, valor e estoque"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDuplicate(peca)}
+                              className="p-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-gold border border-border-subtle transition-colors"
+                              title="Duplicar para cadastrar outra amperagem, medida ou modelo"
+                              aria-label={`Duplicar ${peca.nome}`}
+                            >
+                              <Copy className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
@@ -901,7 +945,11 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
             <div className="flex items-center justify-between border-b border-border-subtle pb-3">
               <div>
                 <h2 className="font-heading text-lg font-bold text-text-main">
-                  {editingPeca.id ? "Editar Peça do Estoque" : "Adicionar Nova Peça na Planilha"}
+                  {editingPeca.id
+                    ? "Editar Peça do Estoque"
+                    : duplicandoDe
+                    ? "Duplicar Peça (novo modelo)"
+                    : "Adicionar Nova Peça na Planilha"}
                 </h2>
                 <p className="text-xs text-text-muted">
                   A receita em estoque é calculada automaticamente (Valor × Quantidade).
@@ -928,9 +976,15 @@ export function AdminStockView({ initialPecas }: AdminStockViewProps) {
                   onChange={(e) =>
                     setEditingPeca({ ...editingPeca, nome: e.target.value.toUpperCase() })
                   }
-                  placeholder="Ex: DISJUNTOR TRIPOLAR WEG C63"
+                  placeholder="Ex: CONTATORA 7 A, TOMADA MACHO 20 A, BARRA DE COBRE 10 MM"
+                  autoFocus
                   className="w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold uppercase"
                 />
+                <p className="text-[11px] text-text-muted mt-1">
+                  {duplicandoDe
+                    ? `Cópia de "${duplicandoDe}". Acrescente no nome o que diferencia este modelo (amperagem, medida, marca) e ajuste valor e quantidade.`
+                    : "Coloque no nome a amperagem, medida ou modelo para diferenciar itens parecidos."}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

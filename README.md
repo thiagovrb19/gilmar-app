@@ -128,6 +128,8 @@ Para configurar uma nova instância do banco no Supabase, acesse o **SQL Editor*
    - Tabela `orcamento_anexos` e criação das políticas de armazenamento para o bucket `orcamento-anexos`.
 6. **`supabase/migrations/010_relatorios_servico.sql`**:
    - Tabela `relatorios_servico` e bucket privado `relatorios-servico` usados pela aba **Relatórios (Antes e Depois)** do painel admin. Sem ela, a aba mostra um aviso pedindo para rodar este arquivo; o restante do sistema funciona normalmente.
+7. **`supabase/migrations/011_pix_tipo_chave_e_qrcode.sql`**:
+   - Colunas `pix_tipo_chave` e `pix_qr_imagem` em `configuracoes` (tipo da chave Pix e imagem opcional do QR Code do banco), editáveis em **Configurações > Pix**.
 
 > 💡 **Script Consolidado:** O arquivo `supabase/fix_horarios_e_servicos.sql` contém a consolidação dos serviços de elétrica e horários da semana atualizados para rápida aplicação.
 

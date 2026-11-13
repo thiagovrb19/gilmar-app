@@ -13,9 +13,11 @@ const DEFAULT_CONFIG: Configuracao = {
   endereco: "Atendimento em Visconde do Rio Branco - MG e região",
   link_maps: "https://www.google.com/maps/search/?api=1&query=Visconde+do+Rio+Branco+MG",
   instagram: "@gseletricaemanutencao",
-  pix_chave: "32988714986",
-  pix_nome: "GILMAR SALES",
+  pix_chave: "11257950690",
+  pix_tipo_chave: "cpf",
+  pix_nome: "GILMAR SOUZA SALES",
   pix_cidade: "Visconde do Rio Branco",
+  pix_qr_imagem: null,
   duracao_horario_min: 60,
   antecedencia_minima_horas: 1,
   janela_dias: 30,
@@ -75,7 +77,8 @@ export async function getServicos(apenasAtivos: boolean = true): Promise<Servico
 /** Busca configurações do app */
 export async function getConfiguracoes(): Promise<Configuracao> {
   if (!isSupabaseConfigured()) {
-    return DEFAULT_CONFIG;
+    const { loadStore } = await import("@/lib/mock-store");
+    return { ...DEFAULT_CONFIG, ...(loadStore().config || {}) };
   }
 
   const supabase = await createClient();
