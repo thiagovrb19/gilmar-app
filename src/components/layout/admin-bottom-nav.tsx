@@ -12,6 +12,7 @@ import {
   Zap,
   Package,
   ClipboardCheck,
+  Award,
   Settings,
   LogOut,
   X,
@@ -36,6 +37,7 @@ export function AdminBottomNav() {
 
   const isMoreActive =
     pathname.startsWith("/admin/relatorios") ||
+    pathname.startsWith("/admin/certificados") ||
     pathname.startsWith("/admin/estoque") ||
     pathname.startsWith("/admin/servicos") ||
     pathname.startsWith("/admin/configuracoes");
@@ -79,6 +81,20 @@ export function AdminBottomNav() {
               <div className="flex flex-col">
                 <span className="font-medium text-sm">Relatórios de Serviço</span>
                 <span className="text-xs text-text-muted">Fotos de antes e depois em PDF</span>
+              </div>
+            </Link>
+
+            <Link
+              href="/admin/certificados"
+              onClick={() => setMoreOpen(false)}
+              className="flex items-center gap-3.5 p-3 rounded-xl hover:bg-surface-2 transition-colors text-text-main"
+            >
+              <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center text-gold">
+                <Award className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-medium text-sm">Certificados e NRs</span>
+                <span className="text-xs text-text-muted">PDFs que o cliente vê na página inicial</span>
               </div>
             </Link>
 

@@ -9,7 +9,7 @@ import {
   Zap,
   Factory,
   Home,
-  Wrench,
+  Award,
   Camera,
   CheckCircle2,
   AlertTriangle,
@@ -130,12 +130,12 @@ export default async function HomePage() {
             <p className="text-[11px] text-text-muted">Instalação, luminárias e tomadas</p>
           </Link>
 
-          <Link href="/agendar" className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1 active:scale-[0.98] block focus:outline-none focus-visible:ring-2 focus-visible:ring-gold" aria-label="Solicitar orçamento de manutenção">
+          <Link href="/certificados" className="electric-glass rounded-2xl p-4 text-center space-y-2 transition-transform hover:-translate-y-1 active:scale-[0.98] block focus:outline-none focus-visible:ring-2 focus-visible:ring-gold" aria-label="Ver certificados e NRs do Gilmar">
             <div className="w-10 h-10 mx-auto rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
-              <Wrench className="w-5 h-5" />
+              <Award className="w-5 h-5" />
             </div>
-            <h3 className="font-heading font-bold text-sm text-text-main">Manutenção</h3>
-            <p className="text-[11px] text-text-muted">Preventiva e corretiva com diagnóstico</p>
+            <h3 className="font-heading font-bold text-sm text-text-main">Certificados</h3>
+            <p className="text-[11px] text-text-muted">Confira todas as certificações e NR do Gilmar.</p>
           </Link>
 
           <SegurancaInfoCard />
