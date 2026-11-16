@@ -333,3 +333,22 @@ export interface ClienteEstatistica {
   valor_total_orcamentos?: number;
   agendamentos?: Agendamento[];
 }
+
+/** Certificado / NR do Gilmar (PDF público exibido na área do cliente) */
+export interface Certificado {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  arquivo_path: string;
+  arquivo_nome: string;
+  tamanho_bytes: number;
+  ordem: number;
+  ativo: boolean;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Certificado já com a URL pública do PDF, pronto para exibir */
+export interface CertificadoView extends Certificado {
+  url: string;
+}
