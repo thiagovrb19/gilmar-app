@@ -394,7 +394,19 @@ export function AdminAppointmentDetailModal({
 
         {/* BOTÃO GERAR PDF E FECHAR */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border-subtle">
-          <button
+          {agendamento.orcamento_admin_id && (
+            <a
+              href="/admin/orcamentos"
+              className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors"
+              title="Este horário foi criado por um orçamento do painel. Edite o valor, os itens e o PDF lá."
+            >
+              <Printer className="w-4 h-4" />
+              <span>Orçamento do painel: abrir em Orçamentos</span>
+            </a>
+          )}
+
+          {!agendamento.orcamento_admin_id && (
+<button
             type="button"
             onClick={() => {
               const itensDetalhados =
@@ -438,8 +450,10 @@ export function AdminAppointmentDetailModal({
             <Printer className="w-4 h-4" />
             <span>Gerar Proposta Comercial (PDF)</span>
           </button>
+)}
 
-          <button
+          {!agendamento.orcamento_admin_id && (
+<button
             type="button"
             onClick={() => setEditandoProposta(true)}
             className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 font-bold text-xs px-4 py-2.5 rounded-xl transition-colors"
@@ -447,6 +461,7 @@ export function AdminAppointmentDetailModal({
             <Pencil className="w-4 h-4" />
             <span>Editar Proposta e Fotos</span>
           </button>
+)}
 
           <button
             type="button"

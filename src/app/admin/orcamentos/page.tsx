@@ -2,7 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/actions/auth";
 import { getServicos } from "@/actions/booking";
-import { listarClientesParaOrcamentoAction, listarOrcamentosAdminAction } from "@/actions/orcamentos";
+import { listarOrcamentosAdminAction } from "@/actions/orcamentos";
 import { AdminOrcamentosView } from "@/components/admin/admin-orcamentos-view";
 
 export const dynamic = "force-dynamic";
@@ -17,17 +17,12 @@ export default async function AdminOrcamentosPage() {
     redirect("/admin/login");
   }
 
-  const [lista, clientes, servicos] = await Promise.all([
-    listarOrcamentosAdminAction(),
-    listarClientesParaOrcamentoAction(),
-    getServicos(),
-  ]);
+  const [lista, servicos] = await Promise.all([listarOrcamentosAdminAction(), getServicos()]);
 
   return (
     <div className="w-full pb-10">
       <AdminOrcamentosView
         orcamentos={lista.success ? lista.orcamentos : []}
-        clientes={clientes.success ? clientes.clientes : []}
         servicos={servicos}
         erro={lista.success ? null : lista.error}
       />

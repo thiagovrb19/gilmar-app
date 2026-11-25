@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  CalendarClock,
   Camera,
   FileText,
   Loader2,
@@ -9,7 +10,6 @@ import {
   Plus,
   Printer,
   Save,
-  Search,
   Trash2,
   UserPlus,
   X,
@@ -17,7 +17,7 @@ import {
 import { toast } from "sonner";
 import {
   ModoValoresOrcamento,
-  OrcamentoAdmin,
+  OrcamentoAdminCompleto,
   OrcamentoAdminResumo,
   Servico,
 } from "@/lib/supabase/types";
@@ -25,17 +25,11 @@ import { formatCurrency, formatPhone, getWhatsAppLink } from "@/lib/formatters";
 import { abrirPropostaPDF, calcularValidadeBR, formatarDataBR } from "@/lib/pdf/proposta-pdf";
 import { comprimirImagem } from "@/lib/imagem/comprimir";
 import { salvarOrcamentoAdminAction } from "@/actions/orcamentos";
-
-export interface ClienteOpcao {
-  id: string;
-  nome: string;
-  whatsapp: string;
-}
+import { getHorariosDisponiveis, HorarioSlot } from "@/actions/booking";
 
 interface Props {
-  inicial: OrcamentoAdmin | null;
+  inicial: OrcamentoAdminCompleto | null;
   servicos: Servico[];
-  clientes: ClienteOpcao[];
   onClose: () => void;
   onSaved: (resumo: OrcamentoAdminResumo) => void;
 }
@@ -55,9 +49,8 @@ interface ItemEd {
 }
 
 const MODOS: { id: ModoValoresOrcamento; titulo: string; ajuda: string }[] = [
-  { id: "por_item", titulo: "Preço em cada serviço", ajuda: "Cada serviço com seu valor; o total é a soma." },
-  { id: "total_unico", titulo: "Valor único no final", ajuda: "Serviços sem preço; você digita só o valor final." },
-  { id: "a_combinar", titulo: "Sem valor (a combinar)", ajuda: "O orçamento sai sem preço, “A combinar”." },
+  { id: "por_item", titulo: "Preço em cada serviço", ajuda: "Cada serviço com seu valor; o total é a soma (você pode ajustar o valor final)." },
+  { id: "total_unico", titulo: "Valor único no final", ajuda: "Serviços sem preço; você digita só o valor final do orçamento." },
 ];
 
 /** Soma máxima das fotos novas em um único salvamento (o limite da requisição é 4 MB) */
@@ -74,19 +67,43 @@ const num = (v: string) => {
 
 const novaKey = () => Math.random().toString(36).slice(2, 10);
 
+const hojeISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** Converte um instante para dia e hora no horário de Brasília (YYYY-MM-DD e HH:MM) */
+function dataHoraBrasilia(iso: string): { data: string; hora: string } {
+  const f = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso));
+  const [data, hora] = f.split(" ");
+  return { data, hora: hora.slice(0, 5) };
+}
+
 export function rotuloOrcamento(numero: number) {
   return `ORC-${String(numero).padStart(4, "0")}`;
 }
 
-export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onSaved }: Props) {
+export function AdminOrcamentoEditor({ inicial, servicos, onClose, onSaved }: Props) {
   const [id, setId] = useState<string | null>(inicial?.id ?? null);
   const [numero, setNumero] = useState<number | null>(inicial?.numero ?? null);
 
-  const [clienteId, setClienteId] = useState<string | null>(inicial?.cliente_id ?? null);
   const [clienteNome, setClienteNome] = useState(inicial?.cliente_nome ?? "");
   const [clienteWhats, setClienteWhats] = useState(inicial?.cliente_whatsapp ? formatPhone(inicial.cliente_whatsapp) : "");
   const [clienteLocal, setClienteLocal] = useState(inicial?.cliente_localidade ?? "Visconde do Rio Branco - MG");
-  const [buscaCliente, setBuscaCliente] = useState("");
+
+  // Horário na agenda
+  const inicialAgenda = inicial?.agendamento ? dataHoraBrasilia(inicial.agendamento.inicio) : null;
+  const [data, setData] = useState(inicialAgenda?.data ?? "");
+  const [hora, setHora] = useState(inicialAgenda?.hora ?? "");
+  const [slotsInfo, setSlotsInfo] = useState<{ data: string; lista: HorarioSlot[] } | null>(null);
 
   const [subtitulo, setSubtitulo] = useState(
     inicial?.subtitulo ?? "Instalação de comandos elétricos, manutenção e dispositivos de segurança"
@@ -96,7 +113,10 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
   const [observacoes, setObservacoes] = useState(inicial?.observacoes ?? "");
   const [validadeDias, setValidadeDias] = useState(inicial?.validade_dias ?? 10);
 
-  const [modo, setModo] = useState<ModoValoresOrcamento>(inicial?.modo_valores ?? "por_item");
+  // orçamentos antigos "a combinar" viram "valor único" com o valor em branco
+  const [modo, setModo] = useState<ModoValoresOrcamento>(
+    inicial?.modo_valores === "total_unico" || inicial?.modo_valores === "a_combinar" ? "total_unico" : "por_item"
+  );
   const [valorFinalStr, setValorFinalStr] = useState(() => {
     if (!inicial || inicial.valor_total == null) return "";
     const soma = inicial.itens.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
@@ -128,23 +148,37 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
 
   const soma = useMemo(() => itens.reduce((a, it) => a + Math.max(1, it.quantidade) * num(it.preco), 0), [itens]);
   const valorFinalNum = valorFinalStr.trim() === "" ? null : num(valorFinalStr);
-  const totalExibido =
-    modo === "a_combinar" ? null : modo === "total_unico" ? valorFinalNum : valorFinalNum != null ? valorFinalNum : soma;
+  const totalCalculado =
+    modo === "total_unico" ? valorFinalNum : valorFinalNum != null && valorFinalNum > 0 ? valorFinalNum : soma;
+  // Sem valor preenchido o orçamento sai "A combinar" automaticamente
+  const aCombinar = !totalCalculado || totalCalculado <= 0;
+  const totalExibido = aCombinar ? null : totalCalculado;
+  const modoPdf: ModoValoresOrcamento = aCombinar ? "a_combinar" : modo;
 
-  const sugestoesCliente = useMemo(() => {
-    const q = buscaCliente.trim().toLowerCase();
-    if (q.length < 1) return [];
-    return clientes
-      .filter((c) => c.nome.toLowerCase().includes(q) || c.whatsapp.includes(q.replace(/\D/g, "") || "§"))
-      .slice(0, 6);
-  }, [buscaCliente, clientes]);
+  // Horários livres do dia escolhido (o horário já reservado por este orçamento continua disponível)
+  useEffect(() => {
+    if (!data) return;
+    let cancelado = false;
+    getHorariosDisponiveis(data)
+      .then((lista) => {
+        if (!cancelado) setSlotsInfo({ data, lista });
+      })
+      .catch(() => {
+        if (!cancelado) setSlotsInfo({ data, lista: [] });
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [data]);
 
-  const escolherCliente = (c: ClienteOpcao) => {
-    setClienteId(c.id);
-    setClienteNome(c.nome);
-    setClienteWhats(formatPhone(c.whatsapp));
-    setBuscaCliente("");
-  };
+  const carregandoSlots = !!data && slotsInfo?.data !== data;
+
+  const horasOferecidas = useMemo(() => {
+    const lista = slotsInfo?.data === data ? slotsInfo.lista : [];
+    const set = new Set(lista.map((sl) => sl.hora_formatada));
+    if (inicialAgenda && inicialAgenda.data === data) set.add(inicialAgenda.hora);
+    return [...set].sort();
+  }, [slotsInfo, inicialAgenda, data]);
 
   const addDoCatalogo = (s: Servico) =>
     setItens((prev) => {
@@ -207,14 +241,12 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
     if (clienteNome.trim().length < 2) return "Informe o nome do cliente.";
     if (itens.length === 0) return "Adicione pelo menos 1 serviço ao orçamento.";
     if (itens.some((i) => i.servicoNome.trim().length < 2)) return "Todo item precisa do nome do serviço.";
-    if (modo === "total_unico" && (valorFinalNum == null || valorFinalNum <= 0)) {
-      return "Informe o valor final do orçamento.";
-    }
+    if (!data || !hora) return "Escolha o dia e o horário do atendimento na agenda.";
     return null;
   };
 
   const dadosPdf = () => {
-    const porItem = modo === "por_item";
+    const porItem = modoPdf === "por_item";
     return {
       numeroPedido: numero ? rotuloOrcamento(numero) : undefined,
       clienteNome: clienteNome.trim(),
@@ -226,7 +258,7 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
       objetivo: objetivo || null,
       condicoesPagamento: condicoes || null,
       observacaoCliente: observacoes || null,
-      modoValores: modo,
+      modoValores: modoPdf,
       ocultarSemFoto: !mostrarSemFoto,
       valorTotal: totalExibido ?? 0,
       itens: itens.map((it, i) => {
@@ -265,7 +297,6 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
     try {
       const res = await salvarOrcamentoAdminAction({
         id: id ?? undefined,
-        clienteId,
         clienteNome,
         clienteWhatsapp: clienteWhats,
         clienteLocalidade: clienteLocal,
@@ -274,9 +305,11 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
         condicoesPagamento: condicoes,
         observacoes,
         modoValores: modo,
-        valorTotal: modo === "a_combinar" ? null : valorFinalNum,
+        valorTotal: valorFinalNum,
         mostrarSemFoto,
         validadeDias,
+        data,
+        hora,
         itens: itens.map((it) => ({
           identificacao: it.identificacao,
           servicoNome: it.servicoNome,
@@ -335,8 +368,7 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
     const digitos = clienteWhats.replace(/\D/g, "");
     if (digitos.length < 10) return null;
     const linhas = itens.map((it, i) => `${i + 1}. ${it.servicoNome}${it.quantidade > 1 ? ` (${it.quantidade}x)` : ""}`);
-    const valorTxt =
-      modo === "a_combinar" ? "A combinar" : totalExibido != null ? formatCurrency(totalExibido) : "—";
+    const valorTxt = totalExibido != null ? formatCurrency(totalExibido) : "A combinar";
     const msg = [
       `Olá, ${clienteNome.trim().split(" ")[0] || "tudo bem"}! Aqui é o Gilmar da GS Elétrica e Manutenção.`,
       numero ? `Segue o orçamento ${rotuloOrcamento(numero)}:` : "Segue o orçamento:",
@@ -373,50 +405,15 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
             <h3 className="font-heading text-sm font-bold text-text-main flex items-center gap-2">
               <UserPlus className="w-4 h-4 text-gold" /> Cliente
             </h3>
-
-            <div className="relative">
-              <label className={labelCls}>Buscar cliente já cadastrado (opcional)</label>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input
-                  className={`${inputCls} pl-8`}
-                  value={buscaCliente}
-                  onChange={(e) => setBuscaCliente(e.target.value)}
-                  placeholder="Digite o nome ou telefone..."
-                />
-              </div>
-              {sugestoesCliente.length > 0 && (
-                <ul className="absolute z-10 left-0 right-0 mt-1 bg-surface-1 border border-border-gold/40 rounded-xl overflow-hidden shadow-xl">
-                  {sugestoesCliente.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        onClick={() => escolherCliente(c)}
-                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-2 flex justify-between gap-2"
-                      >
-                        <span className="text-text-main font-medium truncate">{c.nome}</span>
-                        <span className="text-text-muted shrink-0">{formatPhone(c.whatsapp)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <p className="text-[11px] text-text-muted -mt-1">Só nome e telefone: o cliente não precisa de e-mail nem senha.</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className={labelCls}>Nome / Empresa *</label>
-                <input
-                  className={inputCls}
-                  value={clienteNome}
-                  onChange={(e) => {
-                    setClienteNome(e.target.value);
-                    setClienteId(null); // nome digitado à mão: deixa de apontar para um cadastro
-                  }}
-                />
+                <input className={inputCls} value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} />
               </div>
               <div>
-                <label className={labelCls}>WhatsApp</label>
+                <label className={labelCls}>Telefone / WhatsApp</label>
                 <input
                   className={inputCls}
                   inputMode="tel"
@@ -430,13 +427,64 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
                 <input className={inputCls} value={clienteLocal} onChange={(e) => setClienteLocal(e.target.value)} />
               </div>
             </div>
-            {clienteId && <p className="text-[10px] text-success">Vinculado ao cliente cadastrado.</p>}
+          </section>
+
+          {/* AGENDA */}
+          <section className="space-y-3">
+            <h3 className="font-heading text-sm font-bold text-text-main flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-gold" /> Dia e horário na agenda *
+            </h3>
+            <p className="text-[11px] text-text-muted -mt-1">
+              O orçamento reserva este horário na agenda{totalExibido != null ? " e o valor entra no Financeiro (previsto)" : ""}.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 max-w-sm">
+              <div>
+                <label className={labelCls}>Dia</label>
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={data}
+                  min={hojeISO()}
+                  onChange={(e) => {
+                    setData(e.target.value);
+                    setHora("");
+                  }}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Horário (ou digite outro)</label>
+                <input type="time" className={inputCls} value={hora} onChange={(e) => setHora(e.target.value)} />
+              </div>
+            </div>
+
+            {data && (
+              <div>
+                <label className={labelCls}>
+                  {carregandoSlots ? "Buscando horários livres..." : horasOferecidas.length ? "Horários livres neste dia" : "Sem horário livre na grade deste dia: digite o horário acima."}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {horasOferecidas.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setHora(h)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                        hora === h ? "bg-gold text-bg-base border-gold" : "bg-surface-1 text-text-main border-border-subtle hover:border-gold/50"
+                      }`}
+                    >
+                      {h}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           {/* VALORES */}
           <section className="space-y-3">
             <h3 className="font-heading text-sm font-bold text-text-main">Como mostrar os valores?</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {MODOS.map((m) => (
                 <button
                   key={m.id}
@@ -600,14 +648,14 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
 
           {/* TOTAL */}
           <section className="space-y-3 bg-surface-1 border border-border-gold/40 rounded-2xl p-4">
-            {modo === "por_item" && (
+            {modo === "por_item" ? (
               <>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-text-muted">Soma dos serviços</span>
                   <span className="font-bold text-text-main">{formatCurrency(soma)}</span>
                 </div>
                 <div>
-                  <label className={labelCls}>Valor final do orçamento (opcional — deixe vazio para usar a soma; preencha para dar desconto ou arredondar)</label>
+                  <label className={labelCls}>Valor final do orçamento (opcional — vazio usa a soma; preencha para dar desconto ou arredondar)</label>
                   <input
                     inputMode="decimal"
                     className={inputCls}
@@ -617,10 +665,9 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
                   />
                 </div>
               </>
-            )}
-            {modo === "total_unico" && (
+            ) : (
               <div>
-                <label className={labelCls}>Valor final do orçamento (R$) *</label>
+                <label className={labelCls}>Valor final do orçamento (R$) — deixe vazio para “A combinar”</label>
                 <input
                   inputMode="decimal"
                   className={`${inputCls} text-base font-bold`}
@@ -630,16 +677,16 @@ export function AdminOrcamentoEditor({ inicial, servicos, clientes, onClose, onS
                 />
               </div>
             )}
-            {modo === "a_combinar" && (
-              <p className="text-xs text-text-muted">Este orçamento não terá valores. No PDF o total aparece como “A combinar”.</p>
-            )}
 
             <div className="flex items-center justify-between pt-2 border-t border-border-subtle/60">
               <span className="text-xs text-text-muted">Total no orçamento</span>
               <span className="text-2xl font-bold font-heading text-gold">
-                {modo === "a_combinar" ? "A combinar" : totalExibido != null ? formatCurrency(totalExibido) : "—"}
+                {totalExibido != null ? formatCurrency(totalExibido) : "A combinar"}
               </span>
             </div>
+            {totalExibido == null && (
+              <p className="text-[11px] text-text-muted">Sem valor preenchido: o PDF sai com “A combinar” e nada entra no Financeiro.</p>
+            )}
           </section>
 
           {/* TEXTOS */}

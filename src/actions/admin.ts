@@ -41,12 +41,14 @@ function mapServicosEPreco(ag: any): Agendamento {
   });
 
   const valorCalculado = servicos.reduce((acc: number, s: any) => acc + (s.preco || 0), 0);
-  const valorFinal =
-    Number(ag.valor_total) > 0
-      ? Number(ag.valor_total)
-      : valorCalculado > 0
-      ? valorCalculado
-      : 25;
+  // Orçamento criado pelo admin "a combinar": o valor é 0 mesmo (não aplica o valor padrão de R$ 25)
+  const valorFinal = ag.orcamento_admin_id
+    ? Number(ag.valor_total) || 0
+    : Number(ag.valor_total) > 0
+    ? Number(ag.valor_total)
+    : valorCalculado > 0
+    ? valorCalculado
+    : 25;
 
   return {
     ...ag,

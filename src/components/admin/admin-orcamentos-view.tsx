@@ -4,14 +4,14 @@ import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePlus2, FileText, Loader2, Pencil, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { OrcamentoAdmin, OrcamentoAdminResumo, Servico, StatusOrcamentoAdmin } from "@/lib/supabase/types";
+import { OrcamentoAdminCompleto, OrcamentoAdminResumo, Servico, StatusOrcamentoAdmin } from "@/lib/supabase/types";
 import { formatCurrency, formatPhone } from "@/lib/formatters";
 import {
   alterarStatusOrcamentoAdminAction,
   excluirOrcamentoAdminAction,
   obterOrcamentoAdminAction,
 } from "@/actions/orcamentos";
-import { AdminOrcamentoEditor, ClienteOpcao, rotuloOrcamento } from "./admin-orcamento-editor";
+import { AdminOrcamentoEditor, rotuloOrcamento } from "./admin-orcamento-editor";
 
 const STATUS: { id: StatusOrcamentoAdmin; label: string; cor: string }[] = [
   { id: "rascunho", label: "Rascunho", cor: "bg-surface-2 text-text-muted border-border-subtle" },
@@ -22,17 +22,16 @@ const STATUS: { id: StatusOrcamentoAdmin; label: string; cor: string }[] = [
 
 interface Props {
   orcamentos: OrcamentoAdminResumo[];
-  clientes: ClienteOpcao[];
   servicos: Servico[];
   erro?: string | null;
 }
 
-export function AdminOrcamentosView({ orcamentos, clientes, servicos, erro }: Props) {
+export function AdminOrcamentosView({ orcamentos, servicos, erro }: Props) {
   const router = useRouter();
   const [lista, setLista] = useState<OrcamentoAdminResumo[]>(orcamentos);
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<StatusOrcamentoAdmin | "todos">("todos");
-  const [editor, setEditor] = useState<{ inicial: OrcamentoAdmin | null } | null>(null);
+  const [editor, setEditor] = useState<{ inicial: OrcamentoAdminCompleto | null } | null>(null);
   const [abrindoId, setAbrindoId] = useState<string | null>(null);
 
   // sincroniza quando o servidor manda uma lista nova (router.refresh)
@@ -84,7 +83,15 @@ export function AdminOrcamentosView({ orcamentos, clientes, servicos, erro }: Pr
   };
 
   const valorTexto = (o: OrcamentoAdminResumo) =>
-    o.modo_valores === "a_combinar" ? "A combinar" : o.valor_total != null ? formatCurrency(Number(o.valor_total)) : "—";
+    o.valor_total != null && Number(o.valor_total) > 0 ? formatCurrency(Number(o.valor_total)) : "A combinar";
+
+  const agendaTexto = (o: OrcamentoAdminResumo) => {
+    if (!o.agendamento_inicio) return null;
+    const d = new Date(o.agendamento_inicio);
+    const dia = d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit" });
+    const hora = d.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+    return `${dia} às ${hora}`;
+  };
 
   return (
     <div className="space-y-5">
@@ -95,7 +102,7 @@ export function AdminOrcamentosView({ orcamentos, clientes, servicos, erro }: Pr
           </span>
           <h1 className="text-2xl font-bold font-heading text-text-main mt-1">Orçamentos</h1>
           <p className="text-xs text-text-muted mt-1">
-            Monte orçamentos com o preço que você quiser, em cada serviço ou só no final. Não ocupam a agenda e não mudam os preços do catálogo.
+            Monte orçamentos com o preço que você quiser, em cada serviço ou só no final. Cada orçamento reserva o horário na agenda e, com valor, entra no Financeiro. Os preços do catálogo não mudam.
           </p>
         </div>
         <button
@@ -160,6 +167,12 @@ export function AdminOrcamentosView({ orcamentos, clientes, servicos, erro }: Pr
                       {o.cliente_whatsapp ? `${formatPhone(o.cliente_whatsapp)} · ` : ""}
                       {new Date(o.criado_em).toLocaleDateString("pt-BR")}
                     </p>
+                    {agendaTexto(o) && (
+                      <p className="text-[11px] text-gold mt-0.5">
+                        Agenda: {agendaTexto(o)}
+                        {o.agendamento_status === "cancelado" ? " (liberado)" : ""}
+                      </p>
+                    )}
                   </div>
                   <span className="font-heading font-bold text-lg text-gold whitespace-nowrap">{valorTexto(o)}</span>
                 </div>
@@ -206,7 +219,6 @@ export function AdminOrcamentosView({ orcamentos, clientes, servicos, erro }: Pr
         <AdminOrcamentoEditor
           inicial={editor.inicial}
           servicos={servicos}
-          clientes={clientes}
           onClose={() => setEditor(null)}
           onSaved={aoSalvar}
         />

@@ -552,7 +552,8 @@ export function AdminClientsView({
                                   {formatCurrency(ag.valor_total)}
                                 </span>
 
-                                <button
+                                {!ag.orcamento_admin_id && (
+<button
                                   type="button"
                                   onClick={() => handleGerarPropostaClientePDF(c, ag)}
                                   className="inline-flex items-center gap-1.5 bg-[#0e74bc] hover:bg-[#0c63a0] text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-colors shadow-sm cursor-pointer"
@@ -561,6 +562,7 @@ export function AdminClientsView({
                                   <Printer className="w-3.5 h-3.5" />
                                   <span>Gerar / Baixar PDF</span>
                                 </button>
+)}
 
                                 <button
                                   type="button"
