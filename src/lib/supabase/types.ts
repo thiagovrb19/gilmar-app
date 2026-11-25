@@ -352,3 +352,32 @@ export interface Certificado {
 export interface CertificadoView extends Certificado {
   url: string;
 }
+
+/** Como os valores aparecem num orçamento criado pelo admin */
+export type ModoValoresOrcamento = "por_item" | "total_unico" | "a_combinar";
+export type StatusOrcamentoAdmin = "rascunho" | "enviado" | "aprovado" | "recusado";
+
+/** Orçamento criado pelo admin (preço livre, fora da agenda) */
+export interface OrcamentoAdmin {
+  id: string;
+  numero: number;
+  cliente_id: string | null;
+  cliente_nome: string;
+  cliente_whatsapp: string | null;
+  cliente_localidade: string | null;
+  subtitulo: string | null;
+  objetivo: string | null;
+  condicoes_pagamento: string | null;
+  observacoes: string | null;
+  modo_valores: ModoValoresOrcamento;
+  valor_total: number | null;
+  mostrar_sem_foto: boolean;
+  validade_dias: number;
+  itens: PropostaItemDetalhe[];
+  status: StatusOrcamentoAdmin;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Linha da lista (sem os itens/fotos, que pesam) */
+export type OrcamentoAdminResumo = Omit<OrcamentoAdmin, "itens" | "objetivo" | "subtitulo" | "condicoes_pagamento" | "observacoes">;
