@@ -78,6 +78,8 @@ export interface Agendamento {
   proposta_condicoes_pagamento?: string | null;
   cliente_localidade?: string | null;
   proposta_itens_json?: PropostaItemDetalhe[] | null;
+  /** preenchido quando o agendamento nasceu de um orçamento criado pelo admin */
+  orcamento_admin_id?: string | null;
   criado_em: string;
   cliente?: Cliente;
   servicos?: Servico[];
@@ -352,3 +354,42 @@ export interface Certificado {
 export interface CertificadoView extends Certificado {
   url: string;
 }
+
+/** Como os valores aparecem num orçamento criado pelo admin */
+export type ModoValoresOrcamento = "por_item" | "total_unico" | "a_combinar";
+export type StatusOrcamentoAdmin = "rascunho" | "enviado" | "aprovado" | "recusado";
+
+/** Orçamento criado pelo admin (preço livre, fora da agenda) */
+export interface OrcamentoAdmin {
+  id: string;
+  numero: number;
+  cliente_id: string | null;
+  cliente_nome: string;
+  cliente_whatsapp: string | null;
+  cliente_localidade: string | null;
+  subtitulo: string | null;
+  objetivo: string | null;
+  condicoes_pagamento: string | null;
+  observacoes: string | null;
+  modo_valores: ModoValoresOrcamento;
+  valor_total: number | null;
+  mostrar_sem_foto: boolean;
+  validade_dias: number;
+  itens: PropostaItemDetalhe[];
+  /** horário reservado na agenda para este orçamento */
+  agendamento_id: string | null;
+  status: StatusOrcamentoAdmin;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+/** Orçamento + dados do horário da agenda (usado ao abrir no editor) */
+export type OrcamentoAdminCompleto = OrcamentoAdmin & {
+  agendamento: { id: string; inicio: string; status: AgendamentoStatus } | null;
+};
+
+/** Linha da lista (sem os itens/fotos, que pesam) */
+export type OrcamentoAdminResumo = Omit<OrcamentoAdmin, "itens" | "objetivo" | "subtitulo" | "condicoes_pagamento" | "observacoes"> & {
+  agendamento_inicio?: string | null;
+  agendamento_status?: AgendamentoStatus | null;
+};

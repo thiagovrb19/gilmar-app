@@ -16,6 +16,15 @@ export interface DadosPropostaPDF {
   itens: PropostaItemDetalhe[];
   valorTotal: number;
   desconto?: number;
+  /**
+   * Como os valores aparecem (orçamentos criados pelo admin):
+   *  - por_item (padrão): preço em cada item + total
+   *  - total_unico: itens SEM preço; só o valor final
+   *  - a_combinar: sem valores; o total sai como "A combinar"
+   */
+  modoValores?: "por_item" | "total_unico" | "a_combinar";
+  /** Não desenha o aviso vermelho "SEM FOTO" nos itens sem foto */
+  ocultarSemFoto?: boolean;
 }
 
 /** Formata data em DD/MM/YYYY */
@@ -73,6 +82,9 @@ function sanitizarDados(d: DadosPropostaPDF): DadosPropostaPDF {
     observacaoValores: t(d.observacaoValores),
     observacaoCliente: t(d.observacaoCliente),
     valorTotal: Number(d.valorTotal) || 0,
+    modoValores:
+      d.modoValores === "total_unico" || d.modoValores === "a_combinar" ? d.modoValores : "por_item",
+    ocultarSemFoto: !!d.ocultarSemFoto,
     desconto: d.desconto == null ? d.desconto : Number(d.desconto) || 0,
     itens: (d.itens || []).map((it) => ({
       ...it,
@@ -115,16 +127,28 @@ export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, origin
       nomesServicosResumo || "adequações elétricas, comando e proteção"
     }, conforme o escopo individual descrito abaixo.`;
 
+  const modo = dados.modoValores || "por_item";
+  const porItem = modo === "por_item";
+  const aCombinar = modo === "a_combinar";
+
   const metadeValor = (dados.valorTotal || 0) / 2;
   const condicoesPagamento =
     dados.condicoesPagamento?.trim() ||
-    `Entrada de ${formatCurrency(metadeValor)} (50%) na aprovação da proposta e saldo de ${formatCurrency(
-      (dados.valorTotal || 0) - metadeValor
-    )} (50%) após a conclusão dos serviços.`;
+    (aCombinar
+      ? "Valores e condições de pagamento a combinar diretamente com o cliente."
+      : `Entrada de ${formatCurrency(metadeValor)} (50%) na aprovação da proposta e saldo de ${formatCurrency(
+          (dados.valorTotal || 0) - metadeValor
+        )} (50%) após a conclusão dos serviços.`);
 
   const observacaoValores =
     dados.observacaoValores?.trim() ||
-    "Os valores individuais já incluem materiais, componentes e mão de obra necessários à execução dos serviços descritos.";
+    (porItem
+      ? "Os valores individuais já incluem materiais, componentes e mão de obra necessários à execução dos serviços descritos."
+      : aCombinar
+      ? "O valor será definido após avaliação técnica e alinhado com o cliente antes da execução."
+      : "O valor total é global e já inclui materiais, componentes e mão de obra necessários à execução dos serviços descritos.");
+
+  const textoTotal = aCombinar ? "A COMBINAR" : formatCurrency(dados.valorTotal);
 
   // Nova logo oficial gs-logo (inteira, sem cortes)
   const bannerUrl = `${originUrl}/brand/gs-logo.jpg?v=2`;
@@ -139,6 +163,8 @@ export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, origin
           <img src="${item.fotoUrl}" alt="${item.identificacao}" class="ref-photo" />
         </div>
       `
+      : dados.ocultarSemFoto
+      ? ""
       : `
         <div class="visual-no-photo-container">
           <span class="sem-foto-text">SEM FOTO</span>
@@ -159,9 +185,13 @@ export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, origin
             <div><strong>Serviço:</strong> ${item.servicoNome}</div>
             <div><strong>Descrição:</strong> ${item.descricao}</div>
           </div>
-          <div class="visual-service-price">
+          ${
+            porItem
+              ? `<div class="visual-service-price">
             ${formatCurrency(item.valorTotal)}
-          </div>
+          </div>`
+              : ""
+          }
         </div>
       </div>
     `;
@@ -184,8 +214,12 @@ export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, origin
       <tr>
         <td>${item.identificacao} — ${item.servicoNome}</td>
         <td>${item.quantidade} serviço${item.quantidade > 1 ? "s" : ""}</td>
-        <td>${item.quantidade > 1 ? formatCurrency(item.valorUnitario) : "—"}</td>
-        <td>${formatCurrency(item.valorTotal)}</td>
+        ${
+          porItem
+            ? `<td>${item.quantidade > 1 ? formatCurrency(item.valorUnitario) : "—"}</td>
+        <td>${formatCurrency(item.valorTotal)}</td>`
+            : ""
+        }
       </tr>
     `
     )
@@ -628,17 +662,21 @@ export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, origin
       <table class="inv-table">
         <thead>
           <tr>
-            <th style="width: 52%;">ITEM</th>
-            <th style="width: 16%;">QTD.</th>
-            <th style="width: 16%;">VALOR UNITÁRIO</th>
-            <th style="width: 16%;">VALOR TOTAL</th>
+            <th style="width: ${porItem ? "52%" : "70%"};">ITEM</th>
+            <th style="width: ${porItem ? "16%" : "30%"};">QTD.</th>
+            ${
+              porItem
+                ? `<th style="width: 16%;">VALOR UNITÁRIO</th>
+            <th style="width: 16%;">VALOR TOTAL</th>`
+                : ""
+            }
           </tr>
         </thead>
         <tbody>
           ${investimentoRowsHtml}
           <tr class="inv-total-row">
-            <td colspan="3">VALOR TOTAL DA PROPOSTA</td>
-            <td>${formatCurrency(dados.valorTotal)}</td>
+            <td colspan="${porItem ? 3 : 1}">VALOR TOTAL DA PROPOSTA</td>
+            <td>${textoTotal}</td>
           </tr>
         </tbody>
       </table>
@@ -716,14 +754,17 @@ export function gerarHTMLPropostaComercial(dadosBrutos: DadosPropostaPDF, origin
 }
 
 /**
- * Abre a janela da Proposta Comercial e aciona a geração/impressão em PDF
+ * Abre a janela da Proposta Comercial e aciona a geração/impressão em PDF.
+ * `janelaPreAberta`: use quando o PDF só fica pronto depois de uma espera (ex.: salvar antes).
+ * Navegadores de celular bloqueiam janelas abertas depois de um await; por isso a janela é
+ * aberta no clique (window.open("", "_blank")) e preenchida aqui.
  */
-export function abrirPropostaPDF(dados: DadosPropostaPDF): boolean {
+export function abrirPropostaPDF(dados: DadosPropostaPDF, janelaPreAberta?: Window | null): boolean {
   if (typeof window === "undefined") return false;
   const origin = window.location.origin;
   const html = gerarHTMLPropostaComercial(dados, origin);
 
-  const printWin = window.open("", "_blank");
+  const printWin = janelaPreAberta || window.open("", "_blank");
   if (!printWin) {
     return false;
   }
