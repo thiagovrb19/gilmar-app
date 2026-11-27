@@ -1,8 +1,24 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Award, Check, Eye, EyeOff, FileText, Loader2, Pencil, Trash2, Upload, X, ExternalLink } from "lucide-react";
+import {
+  ArrowUpDown,
+  Award,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUp,
+  Eye,
+  EyeOff,
+  FileText,
+  Loader2,
+  Pencil,
+  Trash2,
+  Upload,
+  X,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 import { CertificadoView } from "@/lib/supabase/types";
 import { createClient } from "@/lib/supabase/client";
@@ -17,7 +33,9 @@ import {
   excluirCertificadoAction,
   iniciarUploadCertificadoAction,
   registrarCertificadoAction,
+  reordenarCertificadosAction,
 } from "@/actions/certificados";
+import { PdfViewerModal } from "@/components/certificados/pdf-viewer-modal";
 
 const inputCls =
   "w-full bg-surface-2 border border-border-subtle rounded-xl px-3.5 py-2.5 text-sm text-text-main focus:outline-none focus:border-gold";
@@ -31,6 +49,23 @@ export function AdminCertificadosView({
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Lista local (para a ordem mudar na hora, antes de o servidor responder)
+  const [lista, setLista] = useState<CertificadoView[]>(certificados);
+  const [listaServidor, setListaServidor] = useState(certificados);
+  const [ordemPendente, setOrdemPendente] = useState(false);
+  if (certificados !== listaServidor) {
+    setListaServidor(certificados);
+    if (!ordemPendente) setLista(certificados); // não sobrescreve enquanto há mudança de ordem sendo salva
+  }
+  const [modoOrdem, setModoOrdem] = useState(false);
+  const [ordemSalva, setOrdemSalva] = useState(false);
+  const [visualizando, setVisualizando] = useState<CertificadoView | null>(null);
+  const timerOrdem = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listaRef = useRef(lista);
+  useEffect(() => {
+    listaRef.current = lista;
+  }, [lista]);
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -136,13 +171,77 @@ export function AdminCertificadosView({
     atualizarTela();
   };
 
+  const gravarOrdem = async (ids: string[]) => {
+    const res = await reordenarCertificadosAction(ids);
+    setOrdemPendente(false);
+    if (!res.success) {
+      toast.error(res.error);
+      router.refresh();
+      return;
+    }
+    setOrdemSalva(true);
+    atualizarTela();
+  };
+
+  const agendarGravacao = (nova: CertificadoView[]) => {
+    setLista(nova);
+    setOrdemPendente(true);
+    setOrdemSalva(false);
+    if (timerOrdem.current) clearTimeout(timerOrdem.current);
+    timerOrdem.current = setTimeout(() => {
+      timerOrdem.current = null;
+      void gravarOrdem(nova.map((c) => c.id));
+    }, 500);
+  };
+
+  const mover = (idx: number, destino: number) => {
+    if (destino < 0 || destino >= lista.length || destino === idx) return;
+    const nova = [...lista];
+    const [item] = nova.splice(idx, 1);
+    nova.splice(destino, 0, item);
+    agendarGravacao(nova);
+  };
+
+  const concluirOrdem = () => {
+    if (timerOrdem.current) {
+      clearTimeout(timerOrdem.current);
+      timerOrdem.current = null;
+      void gravarOrdem(listaRef.current.map((c) => c.id));
+    }
+    setModoOrdem(false);
+  };
+
+  // Se sair da tela com uma mudança de ordem ainda não enviada, envia antes
+  useEffect(() => {
+    return () => {
+      if (timerOrdem.current) {
+        clearTimeout(timerOrdem.current);
+        void reordenarCertificadosAction(listaRef.current.map((c) => c.id));
+      }
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="border-b border-border-subtle pb-4">
         <span className="text-xs text-gold font-semibold flex items-center gap-1.5">
           <Award className="w-3.5 h-3.5" /> Prova de qualificação
         </span>
-        <h1 className="text-2xl font-bold font-heading text-text-main mt-1">Certificados e NRs</h1>
+        <div className="flex items-center justify-between gap-3 mt-1">
+          <h1 className="text-2xl font-bold font-heading text-text-main">Certificados e NRs</h1>
+          {lista.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setModoOrdem(true);
+                setTimeout(() => document.getElementById("lista-certificados")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+              }}
+              className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 text-xs font-bold px-3 py-2 rounded-xl shrink-0"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" /> Reordenar
+            </button>
+          )}
+        </div>
         <p className="text-xs text-text-muted mt-1">
           Envie os PDFs das certificações. Eles aparecem na hora para os clientes, no card “Certificados” da página
           inicial.
@@ -217,16 +316,80 @@ export function AdminCertificadosView({
       </form>
 
       {/* LISTA */}
-      <div className="space-y-3">
-        <h2 className="font-heading text-sm font-bold text-text-main">Certificados publicados ({certificados.length})</h2>
+      <div id="lista-certificados" className="space-y-3 scroll-mt-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-heading text-sm font-bold text-text-main">Certificados publicados ({lista.length})</h2>
+          {lista.length > 1 && !modoOrdem && (
+            <button
+              type="button"
+              onClick={() => setModoOrdem(true)}
+              className="inline-flex items-center gap-1.5 bg-gold/15 hover:bg-gold/25 text-gold border border-gold/40 text-xs font-bold px-3 py-2 rounded-xl"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" /> Reordenar
+            </button>
+          )}
+        </div>
 
-        {certificados.length === 0 && (
+        {modoOrdem && (
+          <div className="bg-surface-1 border border-border-gold/40 rounded-2xl p-3 space-y-2">
+            <p className="text-[11px] text-text-muted leading-relaxed">
+              Use as setas para colocar os mais importantes <strong className="text-gold">primeiro</strong>. A ordem vale
+              para o que o cliente vê. <span className="text-text-main">{ordemPendente ? "Salvando..." : ordemSalva ? "Ordem salva ✓" : ""}</span>
+            </p>
+            {lista.map((c, i) => (
+              <div key={c.id} className="flex items-center gap-2 bg-bg-base border border-border-subtle rounded-xl p-2">
+                <span className="w-7 text-center text-sm font-bold text-gold shrink-0">{i + 1}</span>
+                <span className="flex-1 min-w-0 text-xs text-text-main leading-snug line-clamp-2">
+                  {c.titulo}
+                  {!c.ativo && <span className="ml-1.5 text-destructive font-semibold">(oculto)</span>}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => mover(i, 0)}
+                  disabled={i === 0}
+                  className="p-2 rounded-lg bg-surface-2 text-gold disabled:opacity-30"
+                  aria-label="Colocar no topo"
+                  title="Colocar no topo"
+                >
+                  <ChevronsUp className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mover(i, i - 1)}
+                  disabled={i === 0}
+                  className="p-2 rounded-lg bg-surface-2 text-text-main disabled:opacity-30"
+                  aria-label="Subir"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => mover(i, i + 1)}
+                  disabled={i === lista.length - 1}
+                  className="p-2 rounded-lg bg-surface-2 text-text-main disabled:opacity-30"
+                  aria-label="Descer"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={concluirOrdem}
+              className="w-full inline-flex items-center justify-center gap-2 metallic-gold-btn font-bold text-sm py-3 rounded-xl"
+            >
+              <Check className="w-4 h-4" /> Concluir
+            </button>
+          </div>
+        )}
+
+        {lista.length === 0 && (
           <p className="text-xs text-text-muted bg-surface-1 border border-border-subtle rounded-2xl p-5 text-center">
             Nenhum certificado ainda. Envie o primeiro acima.
           </p>
         )}
 
-        {certificados.map((c) => {
+        {!modoOrdem && lista.map((c) => {
           const editando = editandoId === c.id;
           const ocupado = ocupadoId === c.id;
           return (
@@ -282,14 +445,13 @@ export function AdminCertificadosView({
 
               {!editando && (
                 <div className="flex flex-wrap gap-2 pt-1 border-t border-border-subtle/60">
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => setVisualizando(c)}
                     className="inline-flex items-center gap-1.5 bg-surface-2 hover:bg-surface-3 text-gold border border-border-gold/40 text-xs font-semibold px-3 py-2 rounded-xl"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> Abrir
-                  </a>
+                  </button>
                   <button
                     type="button"
                     disabled={ocupado}
@@ -323,6 +485,15 @@ export function AdminCertificadosView({
           );
         })}
       </div>
+
+      {visualizando && (
+        <PdfViewerModal
+          url={visualizando.url}
+          titulo={visualizando.titulo}
+          nomeArquivo={visualizando.arquivo_nome}
+          onClose={() => setVisualizando(null)}
+        />
+      )}
     </div>
   );
 }

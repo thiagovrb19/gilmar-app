@@ -155,6 +155,14 @@ export async function registrarCertificadoAction(params: {
     return { success: false, error: "O PDF está vazio ou excede 20 MB." };
   }
 
+  // Certificado novo entra no FIM da fila: a ordem que o Gilmar montou não é bagunçada.
+  const { data: ultimo } = await supabase
+    .from(TABELA)
+    .select("ordem")
+    .order("ordem", { ascending: false })
+    .limit(1);
+  const proximaOrdem = ((ultimo && ultimo[0]?.ordem) ?? 0) + 1;
+
   const { data, error } = await supabase
     .from(TABELA)
     .insert({
@@ -163,6 +171,7 @@ export async function registrarCertificadoAction(params: {
       arquivo_path: params.path,
       arquivo_nome: limpar(params.nomeArquivo, 200) || "certificado.pdf",
       tamanho_bytes: tamanho,
+      ordem: proximaOrdem,
     })
     .select("*")
     .single();
@@ -200,6 +209,34 @@ export async function atualizarCertificadoAction(params: {
 
   const { error } = await createAdminClient().from(TABELA).update(campos).eq("id", params.id);
   if (error) return { success: false, error: erroAmigavel(error) };
+  revalidar();
+  return { success: true };
+}
+
+/**
+ * Salva a nova ordem de exibição. Recebe TODOS os ids na ordem desejada (o primeiro aparece primeiro
+ * para o cliente). Atualiza `ordem` para 1, 2, 3...
+ */
+export async function reordenarCertificadosAction(idsEmOrdem: string[]): Promise<Resultado> {
+  const negado = await exigirAdmin();
+  if (negado) return { success: false, error: negado };
+
+  if (!Array.isArray(idsEmOrdem) || idsEmOrdem.length === 0 || idsEmOrdem.length > 500) {
+    return { success: false, error: "Lista de certificados inválida." };
+  }
+  const ids = idsEmOrdem.map((x) => String(x));
+  if (new Set(ids).size !== ids.length || ids.some((x) => !/^[0-9a-f-]{36}$/i.test(x))) {
+    return { success: false, error: "Lista de certificados inválida." };
+  }
+
+  const supabase = createAdminClient();
+  const agora = new Date().toISOString();
+  const resultados = await Promise.all(
+    ids.map((id, i) => supabase.from(TABELA).update({ ordem: i + 1, atualizado_em: agora }).eq("id", id))
+  );
+  const falha = resultados.find((r) => r.error);
+  if (falha?.error) return { success: false, error: erroAmigavel(falha.error) };
+
   revalidar();
   return { success: true };
 }
