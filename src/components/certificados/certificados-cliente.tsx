@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Award, Download, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { CertificadoView } from "@/lib/supabase/types";
 import { formatarTamanho } from "@/lib/certificados/config";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { PdfViewerModal } from "./pdf-viewer-modal";
 
 /**
  * Lista pública de certificados. Atualiza sozinha (Supabase Realtime + verificação a cada 30 s
@@ -12,6 +13,7 @@ import { useRealtimeSync } from "@/hooks/use-realtime-sync";
  */
 export function CertificadosCliente({ certificados }: { certificados: CertificadoView[] }) {
   useRealtimeSync({ tables: ["certificados"], pollIntervalMs: 30000 });
+  const [aberto, setAberto] = useState<CertificadoView | null>(null);
 
   if (certificados.length === 0) {
     return (
@@ -49,17 +51,15 @@ export function CertificadosCliente({ certificados }: { certificados: Certificad
           </div>
 
           <div className="flex gap-2 sm:shrink-0">
-            <a
-              href={c.url}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setAberto(c)}
               className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 metallic-gold-btn font-bold text-xs px-4 py-2.5 rounded-xl"
             >
               <ExternalLink className="w-3.5 h-3.5" /> Visualizar
-            </a>
+            </button>
             <a
-              href={c.url}
-              download={c.arquivo_nome}
+              href={`${c.url}?download=${encodeURIComponent(c.arquivo_nome)}`}
               className="inline-flex items-center justify-center gap-1.5 bg-surface-2 hover:bg-surface-3 text-text-main border border-border-subtle font-semibold text-xs px-3.5 py-2.5 rounded-xl"
               aria-label={`Baixar ${c.titulo}`}
             >
@@ -68,6 +68,15 @@ export function CertificadosCliente({ certificados }: { certificados: Certificad
           </div>
         </article>
       ))}
+
+      {aberto && (
+        <PdfViewerModal
+          url={aberto.url}
+          titulo={aberto.titulo}
+          nomeArquivo={aberto.arquivo_nome}
+          onClose={() => setAberto(null)}
+        />
+      )}
     </div>
   );
 }
